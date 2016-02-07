@@ -111,7 +111,7 @@ def main():
             try:
                 count = rows.count()
             except OperationalError as e:
-                print(e)
+                # should cache these and show if no results at all found
                 continue
         if len(tables_so_far) > 0:
             if output_in_csv:
