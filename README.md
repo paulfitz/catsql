@@ -1,10 +1,25 @@
-Quickly display (part of) a database.  Thin wrapper around SQLAlchemy.
+catsql
+======
 
-Examples:
+
+Quickly display (part of) a database.  Thin wrapper around SQLAlchemy.
+Pronounced "cat-skill" for some reason.
+
+Installation
+------------
+
+`pip install catsql`
+
+Examples
+--------
+
  * `catsql example.sqlite`
  * `catsql postgres://foo:bar@thing.rds.amazonaws.com:5432/database`
  * `catsql example.sqlite --table users`
  * `catsql foo.csv --rows 'total < 1000'`
+
+Usage
+-----
 
 ```
 usage: catsql [-h] [--table [TABLE [TABLE ...]]] [--row [ROW [ROW ...]]]
@@ -30,3 +45,8 @@ optional arguments:
   --bare                Show table and column names, skip actual data.
   --csv                 Output strictly in CSV format.
 ```
+
+License
+-------
+
+MIT
