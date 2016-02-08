@@ -44,10 +44,10 @@ def main():
                         help='Tables to include (defaults to all tables)')
 
     parser.add_argument('--row', nargs='*', required=False, default=None,
-                        help="Filters for rows to include.  Examples: "
-                        "'total < 1000', 'name = \"american_bison\"'. "
-                        "Tables that don't have the columns mentioned are "
-                        "omitted."
+                        help='Filters for rows to include.  Examples: '
+                        '"total < 1000", "name = \'american_bison\'". '
+                        'Tables that don\'t have the columns mentioned are '
+                        'omitted.'
     )
 
     parser.add_argument('--bare', default=False, action='store_true',
