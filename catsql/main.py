@@ -1,6 +1,16 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+import sys
+import os
+
+if sys.version_info < (3, 0):
+    # upgrade to python3 if available, for utf8 safety
+    try:
+        os.execvp("python3", ["python3", __file__] + sys.argv[1:])
+    except OSError:
+        pass
+
 import argparse
 import csv
 from io import StringIO, BytesIO
@@ -10,24 +20,22 @@ from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
 import sys
 
-# Temporary workaround for python2/python3 utf8 issues
+# Get approximate length of header
 class CsvRowWriter:
     def __init__(self):
-        self.queue = StringIO()
-        self.queue2 = BytesIO()
         self.writer = None
 
     def writerow(self, row):
+        row = [str(s) for s in row]
         try:
-            self.writer = csv.writer(self.queue, lineterminator='')
-            row = [str(s) for s in row]
+            queue = StringIO()
+            self.writer = csv.writer(queue, lineterminator='')
             self.writer.writerow(row)
-            return self.queue.getvalue()
         except TypeError:
-            self.writer = csv.writer(self.queue2, lineterminator='')
-            row = [str(s) for s in row]
+            queue = BytesIO()
+            self.writer = csv.writer(queue, lineterminator='')
             self.writer.writerow(row)
-            return self.queue2.getvalue()
+        return queue.getvalue()
 
 def main():
 
