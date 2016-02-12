@@ -14,7 +14,7 @@ setup(name="catsql",
           ]
       },
       install_requires=[
-          "SQLAlchemy>=1.0.11",
+          "SQLAlchemy>=1.1.0",
           "python-magic"
       ],
       url="https://github.com/paulfitz/catsql"

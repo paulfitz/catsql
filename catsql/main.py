@@ -6,7 +6,7 @@ import csv
 from io import StringIO, BytesIO
 from sqlalchemy import *
 from sqlalchemy.orm import create_session, mapper
-from sqlalchemy.exc import ArgumentError, OperationalError
+from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
 import sys
 
@@ -49,6 +49,12 @@ def main():
                         'Tables that don\'t have the columns mentioned are '
                         'omitted.'
     )
+
+    parser.add_argument('--context', nargs='*', required=False, default=None,
+                        help='key=value filters')
+
+    parser.add_argument('--hide-context', default=False, action='store_true',
+                        help='Hide any columns mentioned in context filters')
 
     parser.add_argument('--bare', default=False, action='store_true',
                         help='Show table and column names, skip actual data.')
@@ -100,6 +106,15 @@ def main():
 
     tables_so_far = []
 
+    context_columns = set()
+    def ok_column(name):
+        if name == '_chancer_id_':
+            return False
+        if args.hide_context:
+            if name in context_columns:
+                return False
+        return True
+
     for table_name, table in Base.metadata.tables.items():
         if tables is not None:
             if table_name not in tables:
@@ -113,6 +128,24 @@ def main():
             except OperationalError as e:
                 # should cache these and show if no results at all found
                 continue
+
+        if args.context is not None:
+            applicable = True
+            for context in args.context:
+                if '=' in context:
+                    key, value = context.split('=', 1)
+                    f = {}
+                    f[key] = value
+                    try:
+                        rows = rows.filter_by(**f)
+                    except InvalidRequestError as e:
+                        applicable = False
+                    context_columns.add(key)
+                else:
+                    context_columns.add(context)
+            if not applicable:
+                continue
+
         if len(tables_so_far) > 0:
             if output_in_csv:
                 print("ERROR:",
@@ -127,14 +160,15 @@ def main():
                 print('=' * len(table_name))
         columns = table.columns.keys()
         header_writer = CsvRowWriter()
-        header = header_writer.writerow(list(column for column in columns if column != '_chancer_id_'))
+
+        header = header_writer.writerow(list(column for column in columns if ok_column(column)))
         print(header)
         if not output_in_csv:
             print('-' * len(header))
         if not bare:
             csv_writer = csv.writer(sys.stdout)
             for row in rows:
-                csv_writer.writerow(list(cell for c, cell in enumerate(row) if columns[c] != '_chancer_id_'))
+                csv_writer.writerow(list(cell for c, cell in enumerate(row) if ok_column(columns[c])))
             del csv_writer
         else:
             print("...")
