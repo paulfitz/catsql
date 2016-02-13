@@ -66,8 +66,8 @@ def main():
     parser.add_argument('--hide-context', default=False, action='store_true',
                         help='Hide any columns mentioned in context filters')
 
-    parser.add_argument('--bare', default=False, action='store_true',
-                        help='Show table and column names, skip actual data.')
+    parser.add_argument('--count', default=False, action='store_true',
+                        help='Show row counts instead of actual data.')
 
     parser.add_argument('--csv', default=False, action='store_true',
                         help='Output strictly in CSV format.')
@@ -99,7 +99,6 @@ def main():
     if tables is not None:
         tables = set(tables)
     row_filter = args.row
-    bare = args.bare
     output_in_csv = args.csv
 
     Base = declarative_base()
@@ -191,13 +190,14 @@ def main():
         print(header)
         if not output_in_csv:
             print('-' * len(header))
-        if not bare:
+        if not args.count:
             csv_writer = csv.writer(sys.stdout)
             for row in rows:
                 csv_writer.writerow(list(cell for c, cell in enumerate(row) if ok_column(columns[c])))
             del csv_writer
         else:
-            print("...")
+            ct = rows.count()
+            print("({} row{})".format(ct, '' if ct == 1 else 's'))
         tables_so_far.append(table_name)
 
     if args.save_bookmark:
