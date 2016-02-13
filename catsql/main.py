@@ -12,8 +12,10 @@ if sys.version_info < (3, 0):
         pass
 
 import argparse
+from collections import OrderedDict
 import csv
 from io import StringIO, BytesIO
+import json
 from sqlalchemy import *
 from sqlalchemy.orm import create_session, mapper
 from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError
@@ -70,10 +72,30 @@ def main():
     parser.add_argument('--csv', default=False, action='store_true',
                         help='Output strictly in CSV format.')
 
+    parser.add_argument('--save-bookmark', nargs=1, required=False, default=None,
+                        help='File to save link information in')
+
+    parser.add_argument('--load-bookmark', required=False, action='store_true',
+                        help='File to load link information from')
+
+
     args = parser.parse_args()
 
     url = args.url
     tables = args.table
+
+    context_columns = set()
+    context_filters = dict()
+    if args.load_bookmark:
+        with open(url, 'r') as fin:
+            nargs = json.loads(fin.read())
+        url = nargs['url']
+        tables = nargs['table']
+        context_filters = nargs['context']
+        context_columns = set(nargs['hidden_columns'])
+        if args.context is None:
+            args.context = []
+
     if tables is not None:
         tables = set(tables)
     row_filter = args.row
@@ -114,7 +136,6 @@ def main():
 
     tables_so_far = []
 
-    context_columns = set()
     def ok_column(name):
         if name == '_chancer_id_':
             return False
@@ -122,6 +143,14 @@ def main():
             if name in context_columns:
                 return False
         return True
+    if args.context is not None:
+        for context in args.context:
+            if '=' in context:
+                key, value = context.split('=', 1)
+                context_filters[key] = value
+                context_columns.add(key)
+            else:
+                context_columns.add(context)
 
     for table_name, table in Base.metadata.tables.items():
         if tables is not None:
@@ -138,20 +167,9 @@ def main():
                 continue
 
         if args.context is not None:
-            applicable = True
-            for context in args.context:
-                if '=' in context:
-                    key, value = context.split('=', 1)
-                    f = {}
-                    f[key] = value
-                    try:
-                        rows = rows.filter_by(**f)
-                    except InvalidRequestError as e:
-                        applicable = False
-                    context_columns.add(key)
-                else:
-                    context_columns.add(context)
-            if not applicable:
+            try:
+                rows = rows.filter_by(**context_filters)
+            except InvalidRequestError as e:
                 continue
 
         if len(tables_so_far) > 0:
@@ -181,6 +199,16 @@ def main():
         else:
             print("...")
         tables_so_far.append(table_name)
+
+    if args.save_bookmark:
+        with open(args.save_bookmark[0], 'w') as fout:
+            link = OrderedDict()
+            link['url'] = args.url
+            link['table'] = args.table
+            link['context'] = context_filters
+            link['hidden_columns'] = sorted(context_columns)
+            link['row'] = args.row
+            fout.write(json.dumps(link, indent=2))
 
 if __name__ == "__main__":
     main()
