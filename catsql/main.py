@@ -1,19 +1,9 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import sys
-import os
-
-if sys.version_info < (3, 0):
-    # upgrade to python3 if available, for utf8 safety
-    try:
-        os.execvp("python3", ["python3", __file__] + sys.argv[1:])
-    except OSError:
-        pass
-
 import argparse
 from collections import OrderedDict
-import csv
+import unicodecsv as csv
 from io import StringIO, BytesIO
 import json
 from sqlalchemy import *
