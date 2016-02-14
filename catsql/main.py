@@ -1,16 +1,23 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+
 import argparse
 from collections import OrderedDict
 import unicodecsv as csv
 from io import StringIO, BytesIO
 import json
+import os
 from sqlalchemy import *
 from sqlalchemy.orm import create_session, mapper
-from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError
+from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, SAWarning
 from sqlalchemy.ext.declarative import declarative_base
 import sys
+
+import warnings
+
+warnings.simplefilter("ignore", category=SAWarning)
+
 
 # Get approximate length of header
 class CsvRowWriter:
@@ -37,8 +44,7 @@ def main():
                         'sqlite:///data.db, '
                         'mysql://user:pass@host/db, '
                         'postgres[ql]://user:pass@host/db, '
-                        'data.sqlite3, '
-                        'data.csv')
+                        'data.sqlite3')
 
     parser.add_argument('--table', nargs='*', required=False, default=None,
                         help='Tables to include (defaults to all tables)')
@@ -68,6 +74,8 @@ def main():
     parser.add_argument('--load-bookmark', required=False, action='store_true',
                         help='File to load link information from')
 
+    parser.add_argument('--edit', required=False, action='store_true',
+                        help='Edit original table in your favorite editor (multiple tables not yet supported)')
 
     args = parser.parse_args()
 
@@ -100,6 +108,7 @@ def main():
         if 'sqlite' in result:
             url = 'sqlite:///' + url
             engine = create_engine(url)
+            args.url = url
         elif 'text' in result:
             engine = create_engine('sqlite://')
             with open(url) as f:
@@ -141,64 +150,104 @@ def main():
             else:
                 context_columns.add(context)
 
-    for table_name, table in Base.metadata.tables.items():
-        if tables is not None:
-            if table_name not in tables:
-                continue
-        rows = session.query(table)
-        if row_filter is not None:
-            for filter in row_filter:
-                rows = rows.filter(text(filter))
-            try:
-                count = rows.count()
-            except OperationalError as e:
-                # should cache these and show if no results at all found
-                continue
+    work = None
+    output_filename = None
+    output_file = sys.stdout
+    work_file = None
 
-        if args.context is not None:
-            try:
-                rows = rows.filter_by(**context_filters)
-            except InvalidRequestError as e:
-                continue
+    try:
+        if args.edit:
+            import tempfile
+            work = tempfile.mkdtemp()
+            output_filename = os.path.join(work, 'reference.csv')
+            work_file = open(output_filename, 'wb')
+            output_file = work_file
+            output_in_csv = True
+            args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
 
-        if len(tables_so_far) > 0:
-            if output_in_csv:
-                print("ERROR:",
-                      "More than one table in CSV output "
-                      "(maybe do '--table {}'?)".format(tables_so_far[0]),
-                      file=sys.stderr)
-                exit(1)
-            print("")
-        if table_name != '_chancer_table_':
+        for table_name, table in Base.metadata.tables.items():
+            if tables is not None:
+                if table_name not in tables:
+                    continue
+            rows = session.query(table)
+            if row_filter is not None:
+                for filter in row_filter:
+                    rows = rows.filter(text(filter))
+                try:
+                    count = rows.count()
+                except OperationalError as e:
+                    # should cache these and show if no results at all found
+                    continue
+
+            if args.context is not None:
+                try:
+                    rows = rows.filter_by(**context_filters)
+                except InvalidRequestError as e:
+                    continue
+
+            if len(tables_so_far) > 0:
+                if output_in_csv:
+                    print("ERROR:",
+                          "More than one table in CSV output "
+                          "(maybe do '--table {}'?)".format(tables_so_far[0]),
+                          file=sys.stderr)
+                    exit(1)
+                print("", file=output_file)
+            if table_name != '_chancer_table_':
+                if not output_in_csv:
+                    print(table_name, file=output_file)
+                    print('=' * len(table_name), file=output_file)
+            columns = table.columns.keys()
+            header_writer = CsvRowWriter()
+
+            header = header_writer.writerow(list(column for column in columns if ok_column(column)))
+            print(header, file=output_file)
             if not output_in_csv:
-                print(table_name)
-                print('=' * len(table_name))
-        columns = table.columns.keys()
-        header_writer = CsvRowWriter()
+                print('-' * len(header), file=output_file)
+            if not args.count:
+                csv_writer = csv.writer(output_file)
+                for row in rows:
+                    csv_writer.writerow(list(cell for c, cell in enumerate(row) if ok_column(columns[c])))
+                del csv_writer
+            else:
+                ct = rows.count()
+                print("({} row{})".format(ct, '' if ct == 1 else 's'), file=output_file)
+            tables_so_far.append(table_name)
 
-        header = header_writer.writerow(list(column for column in columns if ok_column(column)))
-        print(header)
-        if not output_in_csv:
-            print('-' * len(header))
-        if not args.count:
-            csv_writer = csv.writer(sys.stdout)
-            for row in rows:
-                csv_writer.writerow(list(cell for c, cell in enumerate(row) if ok_column(columns[c])))
-            del csv_writer
-        else:
-            ct = rows.count()
-            print("({} row{})".format(ct, '' if ct == 1 else 's'))
-        tables_so_far.append(table_name)
+        if args.save_bookmark:
+            with open(args.save_bookmark[0], 'w') as fout:
+                link = OrderedDict()
+                link['url'] = args.url
+                link['table'] = args.table
+                link['context'] = context_filters
+                link['hidden_columns'] = sorted(context_columns)
+                link['row'] = args.row
+                fout.write(json.dumps(link, indent=2))
 
-    if args.save_bookmark:
-        with open(args.save_bookmark[0], 'w') as fout:
-            link = OrderedDict()
-            link['url'] = args.url
-            link['table'] = args.table
-            link['context'] = context_filters
-            link['hidden_columns'] = sorted(context_columns)
-            link['row'] = args.row
-            fout.write(json.dumps(link, indent=2))
+        if args.edit:
+            work_file.close()
+            work_file = None
+            from shutil import copyfile
+            edit_filename = os.path.join(work, 'variant.csv')
+            copyfile(output_filename, edit_filename)
+            from subprocess import call
+            EDITOR = os.environ.get('EDITOR', 'nano')
+            call([EDITOR, edit_filename])
+            call(['patchsql', args.url] +
+                 ['--table'] + tables_so_far + 
+                 ['--follow', output_filename, edit_filename])
+
+    finally:
+        if work:
+            if work_file:
+                try:
+                    work_file.close()
+                except:
+                    pass
+                work_file = None
+            import shutil
+            shutil.rmtree(work)
+            work = None
 
 if __name__ == "__main__":
     main()
