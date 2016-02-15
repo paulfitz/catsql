@@ -13,11 +13,11 @@ from sqlalchemy.orm import create_session, mapper
 from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, SAWarning
 from sqlalchemy.ext.declarative import declarative_base
 import sys
-
 import warnings
 
-warnings.simplefilter("ignore", category=SAWarning)
+from catsql.nullify import Nullify
 
+warnings.simplefilter("ignore", category=SAWarning)
 
 # Get approximate length of header
 class CsvRowWriter:
@@ -76,6 +76,9 @@ def main():
 
     parser.add_argument('--edit', required=False, action='store_true',
                         help='Edit original table in your favorite editor (multiple tables not yet supported)')
+
+    parser.add_argument('--safe-null', required=False, action='store_true',
+                        help='Encode nulls in a reversible way')
 
     args = parser.parse_args()
 
@@ -163,6 +166,7 @@ def main():
             work_file = open(output_filename, 'wb')
             output_file = work_file
             output_in_csv = True
+            args.safe_null = True
             args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
 
         for table_name, table in Base.metadata.tables.items():
@@ -206,8 +210,16 @@ def main():
                 print('-' * len(header), file=output_file)
             if not args.count:
                 csv_writer = csv.writer(output_file)
-                for row in rows:
-                    csv_writer.writerow(list(cell for c, cell in enumerate(row) if ok_column(columns[c])))
+                if args.safe_null:
+                    nullify = Nullify()
+                    for row in rows:
+                        csv_writer.writerow(list(nullify.encode_null(cell)
+                                                 for c, cell in enumerate(row)
+                                                 if ok_column(columns[c])))
+                else:
+                    for row in rows:
+                        csv_writer.writerow(list(cell for c, cell in enumerate(row)
+                                                 if ok_column(columns[c])))
                 del csv_writer
             else:
                 ct = rows.count()
@@ -235,7 +247,8 @@ def main():
             call([EDITOR, edit_filename])
             call(['patchsql', args.url] +
                  ['--table'] + tables_so_far + 
-                 ['--follow', output_filename, edit_filename])
+                 ['--follow', output_filename, edit_filename] + 
+                 ['--safe-null'])
 
     finally:
         if work:

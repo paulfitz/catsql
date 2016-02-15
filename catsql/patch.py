@@ -4,10 +4,23 @@ from __future__ import print_function
 import argparse
 import daff
 import json
+from sqlalchemy.exc import SAWarning
 import sys
 import unicodecsv as csv
+import warnings
 
 from catsql.daffsql.sqlalchemy_database import SqlAlchemyDatabase
+from catsql.nullify import Nullify
+
+warnings.simplefilter("ignore", category=SAWarning)
+
+def fix_nulls(table, active):
+    if not active:
+        return
+    nullify = Nullify()
+    for row in table:
+        for i in range(0, len(row)):
+            row[i] = nullify.decode_null(row[i])
 
 def main():
 
@@ -23,6 +36,9 @@ def main():
 
     parser.add_argument('--table', nargs=1, required=True, default=None,
                         help='Table to patch')
+
+    parser.add_argument('--safe-null', required=False, action='store_true',
+                        help='Decode nulls in a reversible way')
 
     args = parser.parse_args()
 
@@ -44,9 +60,11 @@ def main():
         with open(args.follow[0], 'rb') as fin:
             reader = csv.reader(fin)
             table0 = list(csv.reader(fin))
+            fix_nulls(table0, args.safe_null)
         with open(args.follow[1], 'rb') as fin:
             reader = csv.reader(fin)
             table1 = list(csv.reader(fin))
+            fix_nulls(table1, args.safe_null)
         patch = daff.Coopy.diff(table0, table1)
         ansi_patch = daff.Coopy.diffAsAnsi(table0, table1)
         print(ansi_patch, file=sys.stderr, end='')

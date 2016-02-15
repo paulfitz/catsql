@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name="catsql",
-      version="0.1.6",
+      version="0.1.7",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display quick view from sql databases",
@@ -18,7 +18,7 @@ setup(name="catsql",
           "SQLAlchemy>=1.0.11",
           "python-magic",
           "unicodecsv",
-	  "daff",
+	  "daff>=1.3.14",
 	  "psycopg2"
       ],
       url="https://github.com/paulfitz/catsql"
