@@ -23,7 +23,8 @@ class SqlAlchemyHelper(daff.SqlHelper):
         for column in columns:
             record[column.name] = {
                 'float': column.type_value == 'REAL',
-                'blank': column.type_value == ''
+                'blank': column.type_value == '',
+                'primary': column.primary
             }
         return record
 
@@ -85,7 +86,14 @@ class SqlAlchemyHelper(daff.SqlHelper):
             self.deletes += result.rowcount
 
     def insert(self, db, name, vals):
+        columns = self.getColumns(db, name)
         vals = dictify(vals)
+        keys = vals.keys()
+        for key in keys:
+            if vals[key] == '':
+                if columns[key]['primary']:
+                    # don't try to set blank primary keys, assume they are autoincrement
+                    vals.pop(key)
         tab = db.getTable(name)
         q = db.getTable(name).insert()
         q = q.values(vals)
