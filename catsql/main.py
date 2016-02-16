@@ -196,6 +196,12 @@ def main():
                 except InvalidRequestError as e:
                     continue
 
+            primary_key = table.primary_key
+            if len(primary_key) >= 1:
+                rows = rows.order_by(*primary_key)
+            elif len(table.c) >= 1:
+                rows = rows.order_by(*table.c)
+
             if len(tables_so_far) > 0:
                 if output_in_csv:
                     print("ERROR:",
