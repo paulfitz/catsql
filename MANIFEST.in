@@ -1,1 +1,3 @@
 recursive-include catsql *
+global-exclude *.pyc
+global-exclude *~
