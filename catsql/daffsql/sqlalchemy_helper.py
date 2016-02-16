@@ -32,12 +32,12 @@ class SqlAlchemyHelper(daff.SqlHelper):
         if not is_float:
             if columns[key]['blank']:
                 # could be sqlite untyped
-                if '.' in value:
-                    try:
+                try:
+                    if '.' in value:
                         x = float(value)
                         is_float = True
-                    except:
-                        pass
+                except:
+                    pass
         if is_float:
             # use epsilon
             q = q.where(tab.c[key] > float(value) - EPSILON)
