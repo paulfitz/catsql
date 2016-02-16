@@ -170,7 +170,7 @@ def main():
             import tempfile
             work = tempfile.mkdtemp()
             output_filename = os.path.join(work, 'reference.csv')
-            work_file = open(output_filename, 'wb')
+            work_file = open(output_filename, 'wt')
             output_file = work_file
             output_in_csv = True
             args.safe_null = True
@@ -216,7 +216,10 @@ def main():
             if not output_in_csv:
                 print('-' * len(header), file=output_file)
             if not args.count:
-                csv_writer = csv.writer(output_file)
+                # csv spec is that eol is \r\n; we ignore this for our purposes
+                # for good reasons that unfortunately there isn't space to describe
+                # here on the back of this envelope
+                csv_writer = csv.writer(output_file, lineterminator='\n')
                 if args.safe_null:
                     nullify = Nullify()
                     for row in rows:

@@ -6,11 +6,15 @@ import daff
 import json
 from sqlalchemy.exc import SAWarning
 import sys
-import unicodecsv as csv
 import warnings
 
 from catsql.daffsql.sqlalchemy_database import SqlAlchemyDatabase
 from catsql.nullify import Nullify
+
+if sys.version_info[0] == 2:
+    import unicodecsv as csv
+else:
+    import csv
 
 warnings.simplefilter("ignore", category=SAWarning)
 
@@ -51,17 +55,17 @@ def main():
     patch = None
 
     if args.patch:
-        with open(args.patch[0], 'rb') as fin:
+        with open(args.patch[0], 'rt') as fin:
             reader = csv.reader(fin)
             patch = list(csv.reader(fin))
             patch = daff.Coopy.tablify(patch)
 
     if args.follow:
-        with open(args.follow[0], 'rb') as fin:
+        with open(args.follow[0], 'rt') as fin:
             reader = csv.reader(fin)
             table0 = list(csv.reader(fin))
             fix_nulls(table0, args.safe_null)
-        with open(args.follow[1], 'rb') as fin:
+        with open(args.follow[1], 'rt') as fin:
             reader = csv.reader(fin)
             table1 = list(csv.reader(fin))
             fix_nulls(table1, args.safe_null)
