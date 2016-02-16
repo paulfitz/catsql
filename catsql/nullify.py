@@ -11,7 +11,7 @@ class Nullify(object):
     def encode_null(self, value):
         if value is None:
             return 'NULL'
-        if not isinstance(value, basestring):
+        if not isinstance(value, str):
             return value
         if self.need_underscore.match(value):
             return '_{}'.format(value)
@@ -20,7 +20,7 @@ class Nullify(object):
     def decode_null(self, value):
         if value is None:
             return value
-        if not isinstance(value, basestring):
+        if not isinstance(value, str):
             return value
         if value == 'NULL':
             return None
