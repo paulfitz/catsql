@@ -1,9 +1,19 @@
 #!/usr/bin/env python
 
+import sys
 from setuptools import setup
 
+install_requires = [
+    "daff>=1.3.14",
+    "python-magic",
+    "SQLAlchemy>=1.0.11"
+]
+
+if sys.version_info[0] == 2:
+    install_requires.append('unicodecsv')
+
 setup(name="catsql",
-      version="0.1.7",
+      version="0.1.8",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display quick view from sql databases",
@@ -14,12 +24,14 @@ setup(name="catsql",
               "patchsql=catsql.patch:main"
           ]
       },
-      install_requires=[
-          "SQLAlchemy>=1.0.11",
-          "python-magic",
-          "unicodecsv",
-	  "daff>=1.3.14",
-	  "psycopg2"
-      ],
+      install_requires=install_requires,
+      extras_require={
+          "postgres": [
+              "psycopg2"
+          ],
+          "mysql": [
+              "mysql-python"
+          ]
+      },
       url="https://github.com/paulfitz/catsql"
 )

@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import argparse
 from collections import OrderedDict
-import unicodecsv as csv
 from io import StringIO, BytesIO
 import json
 import os
@@ -16,6 +15,11 @@ import sys
 import warnings
 
 from catsql.nullify import Nullify
+
+if sys.version_info[0] == 2:
+    import unicodecsv as csv
+else:
+    import csv
 
 warnings.simplefilter("ignore", category=SAWarning)
 
@@ -105,6 +109,9 @@ def main():
     Base = declarative_base()
     try:
         engine = create_engine(url)
+    except ImportError as e:
+        print("Support library for this database not installed - {}".format(e))
+        exit(1)
     except ArgumentError:
         import magic
         result = str(magic.from_file(url).lower())
