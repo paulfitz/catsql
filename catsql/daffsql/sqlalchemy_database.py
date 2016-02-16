@@ -1,4 +1,5 @@
 import daff
+import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.orm import create_session, mapper
 from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, CompileError
@@ -17,6 +18,7 @@ class SqlAlchemyDatabase(daff.SqlDatabase):
         self.helper = SqlAlchemyHelper()
 
     def getTable(self, name):
+        self.getColumns(name)
         result = self.Base.metadata.tables[name.toString()]
         return result
 
@@ -46,8 +48,11 @@ class SqlAlchemyDatabase(daff.SqlDatabase):
             column.setName(name)
             column.setPrimaryKey(col.primary_key)
             try:
-                column.setType(str(col.type),'sqlalchemy')
-            except CompileError:
+                type_name = str(col.type)
+                if isinstance(col.type, sqlalchemy.types.Float):
+                    type_name = 'REAL'
+                column.setType(type_name, 'sqlalchemy')
+            except CompileError as e:
                 column.setType("",'sqlalchemy')
             columns.append(column)
         return columns

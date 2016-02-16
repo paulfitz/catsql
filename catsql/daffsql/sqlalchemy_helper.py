@@ -5,17 +5,52 @@ import sys
 
 from catsql.daffsql.dictify import dictify
 
+EPSILON = 0.00001
+
 class SqlAlchemyHelper(daff.SqlHelper):
     def __init__(self):
         self.updates = 0
         self.inserts = 0
         self.deletes = 0
         self.skips = 0
+        self.cached_columns = {}
+
+    def getColumns(self, db, name):
+        if name in self.cached_columns:
+            return self.cached_columns[name]
+        columns = db.getColumns(name)
+        record = self.cached_columns[name] = {}
+        for column in columns:
+            record[column.name] = {
+                'float': column.type_value == 'REAL',
+                'blank': column.type_value == ''
+            }
+        return record
+
+    def where(self, q, key, value, tab, columns):
+        is_float = columns[key]['float']
+        if not is_float:
+            if columns[key]['blank']:
+                # could be sqlite untyped
+                if '.' in value:
+                    try:
+                        x = float(value)
+                        is_float = True
+                    except:
+                        pass
+        if is_float:
+            # use epsilon
+            q = q.where(tab.c[key] > float(value) - EPSILON)
+            q = q.where(tab.c[key] < float(value) + EPSILON)
+        else:
+            q = q.where(tab.c[key] == value)
+        return q
 
     def update(self, db, name, conds, vals):
         conds = dictify(conds)
         vals = dictify(vals)
         tab = db.getTable(name)
+        columns = self.getColumns(db, name)
 
         # should work doesn't work :(
         #q = db.session.query(tab)
@@ -24,7 +59,7 @@ class SqlAlchemyHelper(daff.SqlHelper):
 
         q = db.getTable(name).update()
         for key, value in conds.items():
-            q = q.where(tab.c[key] == value)
+            q = self.where(q, key, value, tab, columns)
         q = q.values(vals)
         result = db.session.connection().execute(q)
         if result.rowcount == 0:
@@ -37,9 +72,10 @@ class SqlAlchemyHelper(daff.SqlHelper):
     def delete(self, db, name, conds):
         conds = dictify(conds)
         tab = db.getTable(name)
+        columns = self.getColumns(db, name)
         q = db.getTable(name).delete()
         for key, value in conds.items():
-            q = q.where(tab.c[key] == value)
+            q = self.where(q, key, value, tab, columns)
         result = db.session.connection().execute(q)
         if result.rowcount == 0:
             print(" * skipped delete {}".format(json.dumps(conds)),
