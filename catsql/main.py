@@ -43,7 +43,7 @@ class CsvRowWriter:
             self.writer.writerow(row)
         return queue.getvalue()
 
-def main():
+def catsql():
 
     parser = argparse.ArgumentParser(description='Quickly display (part of) a database.')
 
@@ -307,12 +307,15 @@ def main():
             shutil.rmtree(work)
             work = None
 
-if __name__ == "__main__":
+def main():
     try:
-        main()
+        catsql()
     except IOError as error:
         if error.errno == errno.EPIPE:
             # totally benign e.g. pipe through head/tail
             pass
         else:
             raise
+
+if __name__ == "__main__":
+    main()
