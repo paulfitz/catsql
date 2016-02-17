@@ -9,9 +9,11 @@ from io import StringIO, BytesIO
 import json
 import os
 from sqlalchemy import *
-from sqlalchemy.orm import create_session, mapper
+from sqlalchemy import types
 from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, SAWarning
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import create_session, mapper
+from sqlalchemy.sql import expression, functions
 import sys
 import warnings
 
@@ -51,8 +53,8 @@ def main():
                         'postgres[ql]://user:pass@host/db, '
                         'data.sqlite3')
 
-    parser.add_argument('--table', nargs='*', required=False, default=None,
-                        help='Tables to include (defaults to all tables)')
+    parser.add_argument('--table', nargs=1, required=False, default=None,
+                        help='Table to include (defaults to all tables)')
 
     parser.add_argument('--row', nargs='*', required=False, default=None,
                         help='Filters for rows to include.  Examples: '
@@ -84,6 +86,9 @@ def main():
 
     parser.add_argument('--safe-null', required=False, action='store_true',
                         help='Encode nulls in a reversible way')
+
+    parser.add_argument('--grep', nargs=1, required=False, default=None,
+                        help='Search cells for occurrence of a text fragment')
 
     args = parser.parse_args()
 
@@ -197,31 +202,49 @@ def main():
                 except InvalidRequestError as e:
                     continue
 
+            if args.grep is not None:
+                # functions.concat would be neater, but doesn't seem to translate
+                # correctly on sqlite
+                parts = ''
+                for idx, column in enumerate(table.columns):
+                    if idx > 0:
+                        parts = parts + ' // '
+                    parts = parts + expression.cast(column, types.Unicode)
+                rows = rows.filter(parts.contains(args.grep[0]))
+
             primary_key = table.primary_key
             if len(primary_key) >= 1:
                 rows = rows.order_by(*primary_key)
             elif len(table.c) >= 1:
                 rows = rows.order_by(*table.c)
 
-            if len(tables_so_far) > 0:
-                if output_in_csv:
-                    print("ERROR:",
-                          "More than one table in CSV output "
-                          "(maybe do '--table {}'?)".format(tables_so_far[0]),
-                          file=sys.stderr)
-                    exit(1)
-                print("", file=output_file)
-            if table_name != '_chancer_table_':
-                if not output_in_csv:
-                    print(table_name, file=output_file)
-                    print('=' * len(table_name), file=output_file)
             columns = table.columns.keys()
-            header_writer = CsvRowWriter()
 
-            header = header_writer.writerow(list(column for column in columns if ok_column(column)))
-            print(header, file=output_file)
-            if not output_in_csv:
-                print('-' * len(header), file=output_file)
+            header_shown = []
+            def show_header_on_need():
+                if header_shown:
+                    return
+                if len(tables_so_far) > 0:
+                    if output_in_csv:
+                        print("ERROR:",
+                              "More than one table in CSV output "
+                              "(maybe do '--table {}'?)".format(tables_so_far[0]),
+                              file=sys.stderr)
+                        exit(1)
+                    print("", file=output_file)
+                if table_name != '_chancer_table_':
+                    if not output_in_csv:
+                        print(table_name, file=output_file)
+                        print('=' * len(table_name), file=output_file)
+                header_writer = CsvRowWriter()
+
+                header = header_writer.writerow(list(column for column in columns if ok_column(column)))
+                print(header, file=output_file)
+                if not output_in_csv:
+                    print('-' * len(header), file=output_file)
+                header_shown.append(True)
+                tables_so_far.append(table_name)
+
             if not args.count:
                 # csv spec is that eol is \r\n; we ignore this for our purposes
                 # for good reasons that unfortunately there isn't space to describe
@@ -230,18 +253,23 @@ def main():
                 if args.safe_null:
                     nullify = Nullify()
                     for row in rows:
+                        show_header_on_need()
                         csv_writer.writerow(list(nullify.encode_null(cell)
                                                  for c, cell in enumerate(row)
                                                  if ok_column(columns[c])))
                 else:
                     for row in rows:
+                        show_header_on_need()
                         csv_writer.writerow(list(cell for c, cell in enumerate(row)
                                                  if ok_column(columns[c])))
                 del csv_writer
             else:
+                show_header_on_need()
                 ct = rows.count()
                 print("({} row{})".format(ct, '' if ct == 1 else 's'), file=output_file)
-            tables_so_far.append(table_name)
+
+        if tables is not None:
+            show_header_on_need()
 
         if args.save_bookmark:
             with open(args.save_bookmark[0], 'w') as fout:
