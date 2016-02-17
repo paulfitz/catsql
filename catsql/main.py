@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import argparse
 from collections import OrderedDict
+import errno
 from io import StringIO, BytesIO
 import json
 import os
@@ -279,4 +280,11 @@ def main():
             work = None
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except IOError as error:
+        if error.errno == errno.EPIPE:
+            # totally benign e.g. pipe through head/tail
+            pass
+        else:
+            raise
