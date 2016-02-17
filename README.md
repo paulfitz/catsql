@@ -10,6 +10,13 @@ Installation
 
 `pip install catsql`
 
+Demo
+----
+
+Please excuse the uneven pacing :-)
+
+![Terminal demo](https://cloud.githubusercontent.com/assets/118367/13099641/551dd062-d502-11e5-87ff-422d3d275005.gif)
+
 Examples
 --------
 
