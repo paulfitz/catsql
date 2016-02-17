@@ -90,6 +90,9 @@ def catsql():
     parser.add_argument('--grep', nargs=1, required=False, default=None,
                         help='Search cells for occurrence of a text fragment')
 
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help='Show SQL queries.')
+
     args = parser.parse_args()
 
     url = args.url
@@ -114,35 +117,19 @@ def catsql():
 
     Base = declarative_base()
     try:
-        engine = create_engine(url)
+        engine = create_engine(url, echo=args.debug)
     except ImportError as e:
         print("Support library for this database not installed - {}".format(e))
         exit(1)
     except ArgumentError:
-        import magic
-        result = str(magic.from_file(url).lower())
-        if 'sqlite' in result:
-            url = 'sqlite:///' + url
-            engine = create_engine(url)
-            args.url = url
-        elif 'text' in result:
-            engine = create_engine('sqlite://')
-            with open(url) as f:
-                table = None
-                metadata = MetaData(bind=engine)
-                cf = csv.DictReader(f, delimiter=',')
-                for row in cf:
-                    if table is None:
-                        table = Table('_chancer_table_', metadata, 
-                                      Column('_chancer_id_', Integer, primary_key=True),
-                                      *(Column(rowname, String()) for rowname in row.keys()))
-                        table.create()
-                    table.insert().values(**row).execute()
-
-                class CsvTable(object): pass
-                mapper(CsvTable, table)
-        else:
-            engine = create_engine(url)
+        try:
+            # maybe this is a local sqlite database?
+            sqlite_url = 'sqlite:///{}'.format(url)
+            engine = create_engine(sqlite_url, echo=args.debug)
+            args.url = sqlite_url
+        except ArgumentError:
+            # no joy, recreate the original problem and die.
+            engine = create_engine(url, echo=args.debug)
 
     Base.metadata.reflect(engine)
 
@@ -151,8 +138,6 @@ def catsql():
     tables_so_far = []
 
     def ok_column(name):
-        if name == '_chancer_id_':
-            return False
         if args.hide_context:
             if name in context_columns:
                 return False
@@ -232,10 +217,9 @@ def catsql():
                               file=sys.stderr)
                         exit(1)
                     print("", file=output_file)
-                if table_name != '_chancer_table_':
-                    if not output_in_csv:
-                        print(table_name, file=output_file)
-                        print('=' * len(table_name), file=output_file)
+                if not output_in_csv:
+                    print(table_name, file=output_file)
+                    print('=' * len(table_name), file=output_file)
                 header_writer = CsvRowWriter()
 
                 header = header_writer.writerow(list(column for column in columns if ok_column(column)))

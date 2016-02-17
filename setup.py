@@ -5,7 +5,6 @@ from setuptools import setup
 
 install_requires = [
     "daff>=1.3.14",
-    "python-magic",
     "SQLAlchemy>=1.0.11"
 ]
 
@@ -13,7 +12,7 @@ if sys.version_info[0] == 2:
     install_requires.append('unicodecsv')
 
 setup(name="catsql",
-      version="0.1.16",
+      version="0.1.17",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display quick view from sql databases",
