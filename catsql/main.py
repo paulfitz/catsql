@@ -17,6 +17,7 @@ from sqlalchemy.sql import expression, functions
 import sys
 import warnings
 
+from catsql import cmdline
 from catsql.nullify import Nullify
 
 if sys.version_info[0] == 2:
@@ -27,7 +28,7 @@ else:
 warnings.simplefilter("ignore", category=SAWarning)
 
 # Get approximate length of header
-class CsvRowWriter:
+class CsvRowWriter(object):
     def __init__(self):
         self.writer = None
 
@@ -43,253 +44,250 @@ class CsvRowWriter:
             self.writer.writerow(row)
         return queue.getvalue()
 
-def catsql():
+class Viewer(object):
+    def __init__(self, args):
+        self.args = args
+        self.failure = False
+        self.setup_filters(args)
+        self.connect_database()
 
-    parser = argparse.ArgumentParser(description='Quickly display (part of) a database.')
+    def setup_filters(self, args):
+        self.url = args.url
+        self.tables = args.table
 
-    parser.add_argument('url', help='Database url or filename.  Examples: '
-                        'sqlite:///data.db, '
-                        'mysql://user:pass@host/db, '
-                        'postgres[ql]://user:pass@host/db, '
-                        'data.sqlite3')
+        self.context_columns = set()
+        self.context_filters = dict()
+        if args.load_bookmark:
+            with open(self.url, 'r') as fin:
+                nargs = json.loads(fin.read())
+            self.url = nargs['url']
+            self.tables = nargs['table']
+            self.context_filters = nargs['context']
+            self.context_columns = set(nargs['hidden_columns'])
+            if args.value is None:
+                self.args.value = []
 
-    parser.add_argument('--table', nargs=1, required=False, default=None,
-                        help='Table to include (defaults to all tables)')
+        if self.tables is not None:
+            self.tables = set(self.tables)
+        self.row_filter = args.sql
+        self.output_in_csv = args.csv
 
-    parser.add_argument('--row', nargs='*', required=False, default=None,
-                        help='Filters for rows to include.  Examples: '
-                        '"total < 1000", "name = \'american_bison\'". '
-                        'Tables that don\'t have the columns mentioned are '
-                        'omitted.'
-    )
+        if args.value is not None:
+            for context in args.value:
+                if '=' in context:
+                    key, value = context.split('=', 1)
+                    self.context_filters[key] = value
+                    self.context_columns.add(key)
+                else:
+                    self.context_columns.add(context)
 
-    parser.add_argument('--context', nargs='*', required=False, default=None,
-                        help='key=value filters')
-
-    parser.add_argument('--hide-context', default=False, action='store_true',
-                        help='Hide any columns mentioned in context filters')
-
-    parser.add_argument('--count', default=False, action='store_true',
-                        help='Show row counts instead of actual data.')
-
-    parser.add_argument('--csv', default=False, action='store_true',
-                        help='Output strictly in CSV format.')
-
-    parser.add_argument('--save-bookmark', nargs=1, required=False, default=None,
-                        help='File to save link information in')
-
-    parser.add_argument('--load-bookmark', required=False, action='store_true',
-                        help='File to load link information from')
-
-    parser.add_argument('--edit', required=False, action='store_true',
-                        help='Edit original table in your favorite editor (multiple tables not yet supported)')
-
-    parser.add_argument('--safe-null', required=False, action='store_true',
-                        help='Encode nulls in a reversible way')
-
-    parser.add_argument('--grep', nargs=1, required=False, default=None,
-                        help='Search cells for occurrence of a text fragment')
-
-    parser.add_argument('--debug', default=False, action='store_true',
-                        help='Show SQL queries.')
-
-    args = parser.parse_args()
-
-    url = args.url
-    tables = args.table
-
-    context_columns = set()
-    context_filters = dict()
-    if args.load_bookmark:
-        with open(url, 'r') as fin:
-            nargs = json.loads(fin.read())
-        url = nargs['url']
-        tables = nargs['table']
-        context_filters = nargs['context']
-        context_columns = set(nargs['hidden_columns'])
-        if args.context is None:
-            args.context = []
-
-    if tables is not None:
-        tables = set(tables)
-    row_filter = args.row
-    output_in_csv = args.csv
-
-    Base = declarative_base()
-    try:
-        engine = create_engine(url, echo=args.debug)
-    except ImportError as e:
-        print("Support library for this database not installed - {}".format(e))
-        exit(1)
-    except ArgumentError:
+    def connect_database(self):
+        self.Base = declarative_base()
         try:
-            # maybe this is a local sqlite database?
-            sqlite_url = 'sqlite:///{}'.format(url)
-            engine = create_engine(sqlite_url, echo=args.debug)
-            args.url = sqlite_url
+            self.engine = create_engine(self.url, echo=self.args.verbose)
+        except ImportError as e:
+            print("Support library for this database not installed - {}".format(e))
+            exit(1)
         except ArgumentError:
-            # no joy, recreate the original problem and die.
-            engine = create_engine(url, echo=args.debug)
+            try:
+                # maybe this is a local sqlite database?
+                sqlite_url = 'sqlite:///{}'.format(self.url)
+                self.engine = create_engine(sqlite_url, echo=self.args.verbose)
+                self.args.url = sqlite_url
+            except ArgumentError:
+                # no joy, recreate the original problem and die.
+                self.engine = create_engine(self.url, echo=self.args.verbose)
 
-    Base.metadata.reflect(engine)
+        self.Base.metadata.reflect(self.engine)
 
-    session = create_session(bind=engine)
+        self.session = create_session(bind=self.engine)
 
-    tables_so_far = []
-
-    def ok_column(name):
-        if args.hide_context:
+    def ok_column(self, name):
+        if self.args.terse:
             if name in context_columns:
                 return False
         return True
-    if args.context is not None:
-        for context in args.context:
-            if '=' in context:
-                key, value = context.split('=', 1)
-                context_filters[key] = value
-                context_columns.add(key)
-            else:
-                context_columns.add(context)
 
-    work = None
-    output_filename = None
-    output_file = sys.stdout
-    work_file = None
+    def start_table(self, table_name, columns):
+        self.header_shown = False
+        self.header_considered = False
+        self.table_name = table_name
+        self.columns = columns
 
-    try:
-        if args.edit:
-            import tempfile
-            work = tempfile.mkdtemp()
-            output_filename = os.path.join(work, 'reference.csv')
-            work_file = open(output_filename, 'wt')
-            output_file = work_file
-            output_in_csv = True
-            args.safe_null = True
-            args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
+    def show_header_on_need(self):
+        if self.header_shown or self.header_considered:
+            return
+        self.header_considered = True
+        if len(self.tables_so_far) > 0:
+            if self.output_in_csv:
+                self.failure = True
+                self.tables_so_far.append(self.table_name)
+                return
+            print("", file=self.output_file)
+        if not self.output_in_csv:
+            print('== {} =='.format(self.table_name), file=self.output_file)
+        header_writer = CsvRowWriter()
 
-        for table_name, table in Base.metadata.tables.items():
-            if tables is not None:
-                if table_name not in tables:
-                    continue
-            rows = session.query(table)
-            if row_filter is not None:
-                for filter in row_filter:
-                    rows = rows.filter(text(filter))
-                try:
-                    count = rows.count()
-                except OperationalError as e:
-                    # should cache these and show if no results at all found
-                    continue
+        header = header_writer.writerow(list(column for column in self.columns 
+                                             if self.ok_column(column)))
+        print(header, file=self.output_file)
+        if not self.output_in_csv:
+            print('-' * len(header), file=self.output_file)
+        self.header_shown = True
+        self.tables_so_far.append(self.table_name)
 
-            if args.context is not None:
-                try:
-                    rows = rows.filter_by(**context_filters)
-                except InvalidRequestError as e:
-                    continue
 
-            if args.grep is not None:
-                # functions.concat would be neater, but doesn't seem to translate
-                # correctly on sqlite
-                parts = ''
-                for idx, column in enumerate(table.columns):
-                    if idx > 0:
-                        parts = parts + ' // '
-                    parts = parts + expression.cast(column, types.Unicode)
-                rows = rows.filter(parts.contains(args.grep[0]))
+    def show(self):
 
-            primary_key = table.primary_key
-            if len(primary_key) >= 1:
-                rows = rows.order_by(*primary_key)
-            elif len(table.c) >= 1:
-                rows = rows.order_by(*table.c)
+        self.tables_so_far = []
 
-            columns = table.columns.keys()
+        work = None
+        output_filename = None
+        self.output_file = sys.stdout
+        work_file = None
+        self.start_table(None, None)
 
-            header_shown = []
-            def show_header_on_need():
-                if header_shown:
-                    return
-                if len(tables_so_far) > 0:
-                    if output_in_csv:
-                        print("ERROR:",
-                              "More than one table in CSV output "
-                              "(maybe do '--table {}'?)".format(tables_so_far[0]),
-                              file=sys.stderr)
-                        exit(1)
-                    print("", file=output_file)
-                if not output_in_csv:
-                    print(table_name, file=output_file)
-                    print('=' * len(table_name), file=output_file)
-                header_writer = CsvRowWriter()
+        try:
+            if self.args.edit:
+                import tempfile
+                work = tempfile.mkdtemp()
+                output_filename = os.path.join(work, 'reference.csv')
+                work_file = open(output_filename, 'wt')
+                self.output_file = work_file
+                self.output_in_csv = True
+                self.args.safe_null = True
+                self.args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
 
-                header = header_writer.writerow(list(column for column in columns if ok_column(column)))
-                print(header, file=output_file)
-                if not output_in_csv:
-                    print('-' * len(header), file=output_file)
-                header_shown.append(True)
-                tables_so_far.append(table_name)
+            table_items = self.Base.metadata.tables.items()
+            table_items.sort(key=lambda p: p[0])
 
-            if not args.count:
-                # csv spec is that eol is \r\n; we ignore this for our purposes
-                # for good reasons that unfortunately there isn't space to describe
-                # here on the back of this envelope
-                csv_writer = csv.writer(output_file, lineterminator='\n')
-                if args.safe_null:
-                    nullify = Nullify()
-                    for row in rows:
-                        show_header_on_need()
-                        csv_writer.writerow(list(nullify.encode_null(cell)
-                                                 for c, cell in enumerate(row)
-                                                 if ok_column(columns[c])))
+            viable_tables = []
+            for table_name, table in table_items:
+                if self.tables is not None:
+                    if table_name not in self.tables:
+                        continue
+                rows = self.session.query(table)
+                if self.row_filter is not None:
+                    for filter in self.row_filter:
+                        rows = rows.filter(text(filter))
+                    try:
+                        count = rows.count()
+                    except OperationalError as e:
+                        # should cache these and show if no results at all found
+                        continue
+
+                if self.args.value is not None:
+                    try:
+                        rows = rows.filter_by(**self.context_filters)
+                    except InvalidRequestError as e:
+                        continue
+
+                if self.args.grep is not None:
+                    # functions.concat would be neater, but doesn't seem to translate
+                    # correctly on sqlite
+                    parts = ''
+                    for idx, column in enumerate(table.columns):
+                        if idx > 0:
+                            parts = parts + ' // '
+                        parts = parts + functions.coalesce(expression.cast(column,
+                                                                           types.Unicode),
+                                                          '')
+                    rows = rows.filter(parts.contains(self.args.grep[0]))
+
+                primary_key = table.primary_key
+                if len(primary_key) >= 1:
+                    rows = rows.order_by(*primary_key)
+                elif len(table.c) >= 1:
+                    rows = rows.order_by(*table.c)
+
+                if self.args.limit:
+                    rows = rows.limit(int(self.args.limit[0]))
+
+                self.header_shown = False
+                self.start_table(table_name, table.columns.keys())
+                viable_tables.append(table_name)
+
+                if not self.args.count:
+                    # csv spec is that eol is \r\n; we ignore this for our purposes
+                    # for good reasons that unfortunately there isn't space to describe
+                    # here on the back of this envelope
+                    csv_writer = csv.writer(self.output_file, lineterminator='\n')
+                    if self.args.safe_null:
+                        nullify = Nullify()
+                        for row in rows:
+                            self.show_header_on_need()
+                            csv_writer.writerow(list(nullify.encode_null(cell)
+                                                     for c, cell in enumerate(row)
+                                                     if self.ok_column(self.columns[c])))
+                    else:
+                        for row in rows:
+                            self.show_header_on_need()
+                            csv_writer.writerow(list(cell for c, cell in enumerate(row)
+                                                     if self.ok_column(self.columns[c])))
+                    del csv_writer
                 else:
-                    for row in rows:
-                        show_header_on_need()
-                        csv_writer.writerow(list(cell for c, cell in enumerate(row)
-                                                 if ok_column(columns[c])))
-                del csv_writer
-            else:
-                show_header_on_need()
-                ct = rows.count()
-                print("({} row{})".format(ct, '' if ct == 1 else 's'), file=output_file)
+                    self.show_header_on_need()
+                    ct = rows.count()
+                    print("({} row{})".format(ct, '' if ct == 1 else 's'), file=self.output_file)
 
-        if tables is not None:
-            show_header_on_need()
+            if len(self.tables_so_far) == 0 and len(viable_tables) == 1:
+                self.show_header_on_need()
 
-        if args.save_bookmark:
-            with open(args.save_bookmark[0], 'w') as fout:
-                link = OrderedDict()
-                link['url'] = args.url
-                link['table'] = args.table
-                link['context'] = context_filters
-                link['hidden_columns'] = sorted(context_columns)
-                link['row'] = args.row
-                fout.write(json.dumps(link, indent=2))
+            if self.args.save_bookmark:
+                with open(self.args.save_bookmark[0], 'w') as fout:
+                    link = OrderedDict()
+                    link['url'] = self.args.url
+                    link['table'] = self.args.table
+                    link['context'] = self.context_filters
+                    link['hidden_columns'] = sorted(self.context_columns)
+                    link['sql'] = self.args.sql
+                    fout.write(json.dumps(link, indent=2))
 
-        if args.edit:
-            work_file.close()
-            work_file = None
-            from shutil import copyfile
-            edit_filename = os.path.join(work, 'variant.csv')
-            copyfile(output_filename, edit_filename)
-            from subprocess import call
-            EDITOR = os.environ.get('EDITOR', 'nano')
-            call([EDITOR, edit_filename])
-            call(['patchsql', args.url] +
-                 ['--table'] + tables_so_far + 
-                 ['--follow', output_filename, edit_filename] + 
-                 ['--safe-null'])
-
-    finally:
-        if work:
-            if work_file:
-                try:
-                    work_file.close()
-                except:
-                    pass
+            if self.args.edit and not self.failure:
+                work_file.close()
                 work_file = None
-            import shutil
-            shutil.rmtree(work)
-            work = None
+                from shutil import copyfile
+                edit_filename = os.path.join(work, 'variant.csv')
+                copyfile(output_filename, edit_filename)
+                from subprocess import call
+                EDITOR = os.environ.get('EDITOR', 'nano')
+                call([EDITOR, edit_filename])
+                call(['patchsql', self.args.url] +
+                     ['--table'] + self.tables_so_far + 
+                     ['--follow', output_filename, edit_filename] + 
+                     ['--safe-null'])
+
+        finally:
+            if self.failure:
+                print("ERROR: "
+                      "More than one table in CSV output, consider adding:",
+                      file=sys.stderr)
+                for name in self.tables_so_far:
+                    print("  --table {}".format(name),
+                          file=sys.stderr)
+
+            if work:
+                if work_file:
+                    try:
+                        work_file.close()
+                    except:
+                        pass
+                    work_file = None
+                import shutil
+                shutil.rmtree(work)
+                work = None
+
+
+def catsql():
+
+    parser = argparse.ArgumentParser(description='Quickly display and edit a slice of a database.')
+
+    cmdline.add_options(parser)
+    args = parser.parse_args()
+
+    viewer = Viewer(args)
+    viewer.show()
+
 
 def main():
     try:
