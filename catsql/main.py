@@ -61,7 +61,7 @@ class Viewer(object):
         self.process_remainder(remainder)
 
     def setup_filters(self, args):
-        self.url = args.url
+        self.url = args.catsql_database_url
         self.tables = args.table
 
         self.context_columns = set()
@@ -102,7 +102,7 @@ class Viewer(object):
                 # maybe this is a local sqlite database?
                 sqlite_url = 'sqlite:///{}'.format(self.url)
                 self.engine = create_engine(sqlite_url, echo=self.args.verbose)
-                self.args.url = sqlite_url
+                self.args.catsql_database_url = sqlite_url
             except ArgumentError:
                 # no joy, recreate the original problem and die.
                 self.engine = create_engine(self.url, echo=self.args.verbose)
@@ -117,6 +117,8 @@ class Viewer(object):
             return
         for table in self.Base.metadata.tables.values():
             column_names |= set(table.columns.keys())
+        if 'catsql_database_url' in column_names:
+            column_names.remove('catsql_database_url')
         parser = argparse.ArgumentParser()
         cmdline.add_options(parser)
         for name in sorted(column_names):
@@ -124,7 +126,7 @@ class Viewer(object):
                 parser.add_argument('--{}'.format(name), nargs=1, default=None)
             except argparse.ArgumentError:
                 column_names.remove(name)
-        self.values = vars(parser.parse_args())
+        self.values = vars(parser.parse_args(sys.argv[1:]))
         dud = []
         for key, val in self.values.items():
             if (key not in column_names) or val is None:
@@ -280,7 +282,7 @@ class Viewer(object):
             if self.args.save_bookmark:
                 with open(self.args.save_bookmark[0], 'w') as fout:
                     link = OrderedDict()
-                    link['url'] = self.args.url
+                    link['url'] = self.args.catsql_database_url
                     link['table'] = self.args.table
                     link['context'] = self.context_filters
                     link['hidden_columns'] = sorted(self.context_columns)
@@ -296,7 +298,7 @@ class Viewer(object):
                 from subprocess import call
                 EDITOR = os.environ.get('EDITOR', 'nano')
                 call([EDITOR, edit_filename])
-                call(['patchsql', self.args.url] +
+                call(['patchsql', self.args.catsql_database_url] +
                      ['--table'] + self.tables_so_far + 
                      ['--follow', output_filename, edit_filename] + 
                      ['--safe-null'])
