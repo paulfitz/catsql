@@ -44,12 +44,21 @@ class CsvRowWriter(object):
             self.writer.writerow(row)
         return queue.getvalue()
 
+class SmartFormatter(argparse.HelpFormatter):
+
+    def _split_lines(self, text, width):
+        if text.startswith('R|'):
+            return text[2:].splitlines()
+        return argparse.HelpFormatter._split_lines(self, text, width)
+
 class Viewer(object):
-    def __init__(self, args):
+    def __init__(self, args, remainder):
         self.args = args
         self.failure = False
+        self.values = None
         self.setup_filters(args)
         self.connect_database()
+        self.process_remainder(remainder)
 
     def setup_filters(self, args):
         self.url = args.url
@@ -101,6 +110,29 @@ class Viewer(object):
         self.Base.metadata.reflect(self.engine)
 
         self.session = create_session(bind=self.engine)
+
+    def process_remainder(self, remainder):
+        column_names = set()
+        if len(remainder) == 0:
+            return
+        for table in self.Base.metadata.tables.values():
+            column_names |= set(table.columns.keys())
+        parser = argparse.ArgumentParser()
+        cmdline.add_options(parser)
+        for name in sorted(column_names):
+            try:
+                parser.add_argument('--{}'.format(name), nargs=1, default=None)
+            except argparse.ArgumentError:
+                column_names.remove(name)
+        self.values = vars(parser.parse_args())
+        dud = []
+        for key, val in self.values.items():
+            if (key not in column_names) or val is None:
+                dud.append(key)
+        for key in dud:
+            del self.values[key]
+        for key, val in self.values.items():
+            self.values[key] = val[0]
 
     def ok_column(self, name):
         if self.args.terse:
@@ -198,6 +230,12 @@ class Viewer(object):
                     except InvalidRequestError as e:
                         continue
 
+                if self.values is not None:
+                    try:
+                        rows = rows.filter_by(**self.values)
+                    except InvalidRequestError as e:
+                        continue
+
                 if self.args.grep:
                     rows = self.add_grep(table, rows, self.args.grep[0], case_sensitive=False)
 
@@ -287,12 +325,12 @@ class Viewer(object):
 
 def catsql():
 
-    parser = argparse.ArgumentParser(description='Quickly display and edit a slice of a database.')
+    parser = argparse.ArgumentParser(description='Quickly display and edit a slice of a database.',
+                                     formatter_class=SmartFormatter)
 
     cmdline.add_options(parser)
-    args = parser.parse_args()
-
-    viewer = Viewer(args)
+    args, remainder = parser.parse_known_args()
+    viewer = Viewer(args, remainder)
     viewer.show()
 
 
