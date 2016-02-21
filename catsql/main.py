@@ -136,6 +136,22 @@ class Viewer(object):
         self.header_shown = True
         self.tables_so_far.append(self.table_name)
 
+    def add_grep(self, table, query, sequence, case_sensitive):
+        # functions.concat would be neater, but doesn't seem to translate
+        # correctly on sqlite
+        parts = ''
+        for idx, column in enumerate(table.columns):
+            if idx > 0:
+                parts = parts + ' // '
+            part = functions.coalesce(expression.cast(column,
+                                                      types.Unicode),
+                                      '')
+            parts = parts + part
+        if case_sensitive:
+            query = query.filter(parts.contains(sequence))
+        else:
+            query = query.filter(parts.ilike('%%' + sequence + '%%'))
+        return query
 
     def show(self):
 
@@ -182,17 +198,8 @@ class Viewer(object):
                     except InvalidRequestError as e:
                         continue
 
-                if self.args.grep is not None:
-                    # functions.concat would be neater, but doesn't seem to translate
-                    # correctly on sqlite
-                    parts = ''
-                    for idx, column in enumerate(table.columns):
-                        if idx > 0:
-                            parts = parts + ' // '
-                        parts = parts + functions.coalesce(expression.cast(column,
-                                                                           types.Unicode),
-                                                          '')
-                    rows = rows.filter(parts.contains(self.args.grep[0]))
+                if self.args.grep:
+                    rows = self.add_grep(table, rows, self.args.grep[0], case_sensitive=False)
 
                 primary_key = table.primary_key
                 if len(primary_key) >= 1:
