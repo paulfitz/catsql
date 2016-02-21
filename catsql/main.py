@@ -207,10 +207,9 @@ class Viewer(object):
                 self.args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
 
             table_items = self.Base.metadata.tables.items()
-            table_items.sort(key=lambda p: p[0])
 
             viable_tables = []
-            for table_name, table in table_items:
+            for table_name, table in sorted(table_items):
                 if self.tables is not None:
                     if table_name not in self.tables:
                         continue
