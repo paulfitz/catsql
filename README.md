@@ -15,7 +15,7 @@ Demo
 
 Please excuse the uneven pacing :-)
 
-![Terminal demo](https://cloud.githubusercontent.com/assets/118367/13099641/551dd062-d502-11e5-87ff-422d3d275005.gif)
+![Terminal demo](https://cloud.githubusercontent.com/assets/118367/13240849/048e2834-d9b4-11e5-9510-7812f2fc1b71.gif)
 
 Examples
 --------
