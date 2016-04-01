@@ -7,6 +7,10 @@ def add_options(parser):
                         'postgres[ql]://user:pass@host/db, '
                         'data.sqlite3')
 
+    parser.add_argument('--column', action='append',
+                        help='Column to include (defaults to all columns). '
+                        'Can be a comma separated list of multiple columns.')
+
     parser.add_argument('--count', default=False, action='store_true',
                         help='Show row counts instead of actual data.')
 
@@ -34,14 +38,15 @@ def add_options(parser):
                         help='Save the current set of filters specified to a file.')
 
     parser.add_argument('--sql', action='append',
-                        help='Add a SQL filter for rows to include.  Examples: '
-                        '"total < 1000", "name = \'american_bison\'". '
+                        help='Add a raw SQL filter for rows to include.  Example: '
+                        '"total < 1000", "created_at > now() - interval \'1 day\'". '
                         'Tables that don\'t have the columns mentioned are '
                         'omitted.'
     )
 
     parser.add_argument('--table', action='append',
-                        help='Table to include (defaults to all tables)')
+                        help='Table to include (defaults to all tables). '
+                        'Can be a comma separated list of multiple tables.')
 
     parser.add_argument('--terse', default=False, action='store_true',
                         help='Hide any columns with predetermined values.')

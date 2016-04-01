@@ -12,7 +12,7 @@ from sqlalchemy import *
 from sqlalchemy import types
 from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, SAWarning
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import create_session, mapper
+from sqlalchemy.orm import create_session, load_only, mapper
 from sqlalchemy.sql import expression, functions
 import sys
 import warnings
@@ -60,9 +60,16 @@ class Viewer(object):
         self.connect_database()
         self.process_remainder(remainder)
 
+    def decomma(self, lst):
+        if not lst:
+            return lst
+        lst = [l.split(',') for l in lst]
+        return [item for sublist in lst for item in sublist]
+
     def setup_filters(self, args):
         self.url = args.catsql_database_url
-        self.tables = args.table
+        self.tables = self.decomma(args.table)
+        self.selected_columns = self.decomma(args.column)
 
         self.context_columns = set()
         self.context_filters = dict()
@@ -70,7 +77,8 @@ class Viewer(object):
             with open(self.url, 'r') as fin:
                 nargs = json.loads(fin.read())
             self.url = nargs['url']
-            self.tables = nargs['table']
+            self.tables = set(nargs['table'])
+            self.selected_columns = narg.get('column', [])
             self.context_filters = nargs['context']
             self.context_columns = set(nargs['hidden_columns'])
             if args.value is None:
@@ -140,6 +148,9 @@ class Viewer(object):
         if self.args.terse:
             if name in context_columns:
                 return False
+        if self.selected_columns:
+            if name not in self.selected_columns:
+                return False
         return True
 
     def start_table(self, table_name, columns):
@@ -147,6 +158,8 @@ class Viewer(object):
         self.header_considered = False
         self.table_name = table_name
         self.columns = columns
+        if self.selected_columns:
+            self.columns = self.selected_columns
 
     def show_header_on_need(self):
         if self.header_shown or self.header_considered:
@@ -215,7 +228,16 @@ class Viewer(object):
                 if self.tables is not None:
                     if table_name not in self.tables:
                         continue
-                rows = self.session.query(table)
+                if self.selected_columns is not None:
+                    ok = True
+                    for name in self.selected_columns:
+                        if name not in table.c:
+                            ok = False
+                    if not ok:
+                        continue
+                    rows = self.session.query(*[table.c[name] for name in self.selected_columns])
+                else:
+                    rows = self.session.query(table)
                 if self.row_filter is not None:
                     for filter in self.row_filter:
                         rows = rows.filter(text(filter))
@@ -283,7 +305,8 @@ class Viewer(object):
                 with open(self.args.save_bookmark[0], 'w') as fout:
                     link = OrderedDict()
                     link['url'] = self.args.catsql_database_url
-                    link['table'] = self.args.table
+                    link['table'] = list(self.tables) if self.tables else None
+                    link['column'] = self.selected_columns
                     link['context'] = self.context_filters
                     link['hidden_columns'] = sorted(self.context_columns)
                     link['sql'] = self.args.sql
