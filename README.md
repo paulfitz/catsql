@@ -1,6 +1,6 @@
 catsql
 ======
-
+[![Downloads](https://img.shields.io/pypi/dm/catsql.svg)](https://pypi.python.org/pypi/catsql)
 
 Quickly display or edit part of a database.  Thin wrapper around SQLAlchemy.
 Pronounced "cat-skill" for some reason.
