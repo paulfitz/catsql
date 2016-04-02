@@ -78,7 +78,7 @@ class Viewer(object):
                 nargs = json.loads(fin.read())
             self.url = nargs['url']
             self.tables = set(nargs['table'])
-            self.selected_columns = narg.get('column', [])
+            self.selected_columns = nargs.get('column', [])
             self.context_filters = nargs['context']
             self.context_columns = set(nargs['hidden_columns'])
             if args.value is None:
@@ -321,7 +321,7 @@ class Viewer(object):
                 from subprocess import call
                 EDITOR = os.environ.get('EDITOR', 'nano')
                 call([EDITOR, edit_filename])
-                call(['patchsql', self.args.catsql_database_url] +
+                call(['patchsql', self.url] +
                      ['--table'] + self.tables_so_far + 
                      ['--follow', output_filename, edit_filename] + 
                      ['--safe-null'])
