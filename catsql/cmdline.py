@@ -15,7 +15,10 @@ def add_options(parser):
                         help='Show row counts instead of actual data.')
 
     parser.add_argument('--csv', default=False, action='store_true',
-                        help='Output strictly in CSV format.')
+                        help='Output strictly in CSV format. Only one table can be shown.')
+
+    parser.add_argument('--distinct', default=False, action='store_true',
+                        help='Show distinct rows only, hiding duplicates.')
 
     parser.add_argument('--edit', required=False, action='store_true',
                         help='Edit original table in your favorite editor. '

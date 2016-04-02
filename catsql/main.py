@@ -78,6 +78,7 @@ class Viewer(object):
                 nargs = json.loads(fin.read())
             self.url = nargs['url']
             self.tables = set(nargs['table'])
+            self.args.distinct = nargs.get('distinct', False)
             self.selected_columns = nargs.get('column', [])
             self.context_filters = nargs['context']
             self.context_columns = set(nargs['hidden_columns'])
@@ -188,7 +189,9 @@ class Viewer(object):
         # correctly on sqlite
         parts = ''
         for idx, column in enumerate(table.columns):
-            if idx > 0:
+            if not self.ok_column(column.name):
+                continue
+            if parts != '':
                 parts = parts + ' // '
             part = functions.coalesce(expression.cast(column,
                                                       types.Unicode),
@@ -225,9 +228,11 @@ class Viewer(object):
 
             viable_tables = []
             for table_name, table in sorted(table_items):
+
                 if self.tables is not None:
                     if table_name not in self.tables:
                         continue
+
                 if self.selected_columns is not None:
                     ok = True
                     for name in self.selected_columns:
@@ -238,6 +243,10 @@ class Viewer(object):
                     rows = self.session.query(*[table.c[name] for name in self.selected_columns])
                 else:
                     rows = self.session.query(table)
+
+                if self.args.distinct:
+                    rows = rows.distinct()
+
                 if self.row_filter is not None:
                     for filter in self.row_filter:
                         rows = rows.filter(text(filter))
@@ -255,7 +264,8 @@ class Viewer(object):
 
                 if self.values is not None:
                     try:
-                        rows = rows.filter_by(**self.values)
+                        for key, val in self.values.items():
+                            rows = rows.filter(table.c[key] == val)
                     except InvalidRequestError as e:
                         continue
 
@@ -263,7 +273,9 @@ class Viewer(object):
                     rows = self.add_grep(table, rows, self.args.grep[0], case_sensitive=False)
 
                 primary_key = table.primary_key
-                if len(primary_key) >= 1:
+                if self.selected_columns:
+                    rows = rows.order_by(*[table.c[name] for name in self.selected_columns])
+                elif len(primary_key) >= 1:
                     rows = rows.order_by(*primary_key)
                 elif len(table.c) >= 1:
                     rows = rows.order_by(*table.c)
@@ -307,6 +319,7 @@ class Viewer(object):
                     link['url'] = self.args.catsql_database_url
                     link['table'] = list(self.tables) if self.tables else None
                     link['column'] = self.selected_columns
+                    link['distinct'] = self.args.distinct
                     link['context'] = self.context_filters
                     link['hidden_columns'] = sorted(self.context_columns)
                     link['sql'] = self.args.sql
