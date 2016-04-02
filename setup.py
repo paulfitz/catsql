@@ -12,7 +12,7 @@ if sys.version_info[0] == 2:
     install_requires.append('unicodecsv')
 
 setup(name="catsql",
-      version="0.2.5",
+      version="0.2.6",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display quick view from sql databases",
