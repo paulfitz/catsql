@@ -31,10 +31,10 @@ Usage
 -----
 
 ```
-usage: catsql [-h] [--count] [--csv] [--edit] [--grep GREP] [--limit LIMIT]
-              [--load-bookmark] [--safe-null] [--save-bookmark SAVE_BOOKMARK]
-              [--sql SQL] [--table TABLE] [--terse] [--value VALUE]
-              [--verbose]
+usage: catsql [-h] [--column COLUMN] [--count] [--csv] [--edit] [--grep GREP]
+              [--limit LIMIT] [--load-bookmark] [--safe-null]
+              [--save-bookmark SAVE_BOOKMARK] [--sql SQL] [--table TABLE]
+              [--terse] [--value VALUE] [--verbose]
               catsql_database_url
 
 Quickly display and edit a slice of a database.
@@ -46,6 +46,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --column COLUMN       Column to include (defaults to all columns). Can be a
+                        comma separated list of multiple columns.
   --count               Show row counts instead of actual data.
   --csv                 Output strictly in CSV format.
   --edit                Edit original table in your favorite editor. Respects
@@ -57,10 +59,12 @@ optional arguments:
   --safe-null           Encode nulls in a reversible way.
   --save-bookmark SAVE_BOOKMARK
                         Save the current set of filters specified to a file.
-  --sql SQL             Add a SQL filter for rows to include. Examples: "total
-                        < 1000", "name = 'american_bison'". Tables that don't
-                        have the columns mentioned are omitted.
-  --table TABLE         Table to include (defaults to all tables)
+  --sql SQL             Add a raw SQL filter for rows to include. Example:
+                        "total < 1000", "created_at > now() - interval '1
+                        day'". Tables that don't have the columns mentioned
+                        are omitted.
+  --table TABLE         Table to include (defaults to all tables). Can be a
+                        comma separated list of multiple tables.
   --terse               Hide any columns with predetermined values.
   --value VALUE         Add a column=value filter. Example:
                           --value id=ID --value name=Jupiter
