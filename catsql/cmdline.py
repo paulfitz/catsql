@@ -28,6 +28,9 @@ def add_options(parser):
                         help='Search cells for occurrence of a text fragment. '
                         'Translated to SQL query, performed by database.')
 
+    parser.add_argument('--json', nargs=1, required=False, default=None,
+                        help='Save results to a json file. Only one table allowed.')
+
     parser.add_argument('--limit', nargs=1, required=False, default=None,
                         help='Maximum number of rows per table.')
 

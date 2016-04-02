@@ -89,6 +89,7 @@ class Viewer(object):
             self.tables = set(self.tables)
         self.row_filter = args.sql
         self.output_in_csv = args.csv
+        self.output_in_json = args.json
 
         if args.value is not None:
             for context in args.value:
@@ -164,25 +165,27 @@ class Viewer(object):
 
     def show_header_on_need(self):
         if self.header_shown or self.header_considered:
-            return
+            return True
         self.header_considered = True
         if len(self.tables_so_far) > 0:
-            if self.output_in_csv:
+            if self.output_in_csv or self.output_in_json:
                 self.failure = True
                 self.tables_so_far.append(self.table_name)
-                return
+                return False
             print("", file=self.output_file)
-        if not self.output_in_csv:
+        if not (self.output_in_csv or self.output_in_json):
             print('== {} =='.format(self.table_name), file=self.output_file)
-        header_writer = CsvRowWriter()
+        if not self.output_in_json:
+            header_writer = CsvRowWriter()
 
-        header = header_writer.writerow(list(column for column in self.columns 
-                                             if self.ok_column(column)))
-        print(header, file=self.output_file)
-        if not self.output_in_csv:
-            print('-' * len(header), file=self.output_file)
+            header = header_writer.writerow(list(column for column in self.columns 
+                                                 if self.ok_column(column)))
+            print(header, file=self.output_file)
+            if not self.output_in_csv:
+                print('-' * len(header), file=self.output_file)
         self.header_shown = True
         self.tables_so_far.append(self.table_name)
+        return True
 
     def add_grep(self, table, query, sequence, case_sensitive):
         # functions.concat would be neater, but doesn't seem to translate
@@ -287,7 +290,11 @@ class Viewer(object):
                 self.start_table(table_name, table.columns.keys())
                 viable_tables.append(table_name)
 
-                if not self.args.count:
+                if self.output_in_json:
+                    if not self.show_header_on_need():
+                        continue
+                    self.save_as_json(table, rows, self.output_in_json[0])
+                elif not self.args.count:
                     # csv spec is that eol is \r\n; we ignore this for our purposes
                     # for good reasons that unfortunately there isn't space to describe
                     # here on the back of this envelope
@@ -295,13 +302,15 @@ class Viewer(object):
                     if self.args.safe_null:
                         nullify = Nullify()
                         for row in rows:
-                            self.show_header_on_need()
+                            if not self.show_header_on_need():
+                                continue
                             csv_writer.writerow(list(nullify.encode_null(cell)
                                                      for c, cell in enumerate(row)
                                                      if self.ok_column(self.columns[c])))
                     else:
                         for row in rows:
-                            self.show_header_on_need()
+                            if not self.show_header_on_need():
+                                continue
                             csv_writer.writerow(list(cell for c, cell in enumerate(row)
                                                      if self.ok_column(self.columns[c])))
                     del csv_writer
@@ -342,7 +351,7 @@ class Viewer(object):
         finally:
             if self.failure:
                 print("ERROR: "
-                      "More than one table in CSV output, consider adding:",
+                      "More than one table in csv/json output, consider adding:",
                       file=sys.stderr)
                 for name in self.tables_so_far:
                     print("  --table {}".format(name),
@@ -359,6 +368,29 @@ class Viewer(object):
                 shutil.rmtree(work)
                 work = None
 
+
+    def save_as_json(self, table, rows, filename):
+        result = OrderedDict()
+        result['count'] = 0
+        result['meta'] = {
+            'generator': 'catsql'
+        }
+        results = result['results'] = []
+        names = []
+        idxs = []
+        for idx, column in enumerate(table.columns):
+            if not self.ok_column(column.name):
+                continue
+            idxs.append(idx)
+            names.append(column.name)
+        for row in rows:
+            od = OrderedDict()
+            for i, idx in enumerate(idxs):
+                od[names[i]] = row[idx]
+            results.append(od)
+        result['count'] = len(results)
+        with open(filename, 'w') as fout:
+            fout.write(json.dumps(result, indent=2))
 
 def catsql():
 
