@@ -117,7 +117,10 @@ class Viewer(object):
                 # no joy, recreate the original problem and die.
                 self.engine = create_engine(self.url, echo=self.args.verbose)
 
-        self.Base.metadata.reflect(self.engine)
+        only = None
+        if self.tables:
+            only = list(self.tables)
+        self.Base.metadata.reflect(self.engine, only=only)
 
         self.session = create_session(bind=self.engine)
 
