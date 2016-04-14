@@ -112,7 +112,7 @@ class Viewer(object):
                 # maybe this is a local sqlite database?
                 sqlite_url = 'sqlite:///{}'.format(self.url)
                 self.engine = create_engine(sqlite_url, echo=self.args.verbose)
-                self.args.catsql_database_url = sqlite_url
+                self.url = self.args.catsql_database_url = sqlite_url
             except ArgumentError:
                 # no joy, recreate the original problem and die.
                 self.engine = create_engine(self.url, echo=self.args.verbose)
