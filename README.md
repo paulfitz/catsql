@@ -18,14 +18,76 @@ Demo
 Examples
 --------
 
- * `catsql example.sqlite --limit 3`
- * `catsql $DATABASE_URL --table users --id 20`
- * `catsql $DATABASE_URL --table users --grep paul`
- * `catsql $DATABASE_URL --table users --grep paul --edit` - edit whatever
-   slice of the database you are viewing using your default `$EDITOR`.
- * `catsql postgres://foo:bar@thing.rds.amazonaws.com:5432/database` - if
-   you install the appropriate SqlAlchemy drivers, you can edit postgres,
-   mysql, ... databases in your default `$EDITOR`.
+Unless otherwise noted, all the flags demonstrated can be combined with
+each other.
+
+`catsql example.sqlite`
+
+Prints contents of entire database.  Suitable for small databases :-)
+
+`catsql $DATABASE_URL --count`
+
+Prints number of rows in each table of the database.  Suitable for medium
+databases whose rows can be counted without too much pain.
+
+`catsql $DATABASE_URL --limit 3`
+
+Print 3 rows from every table in the database.  Suitable for medium
+databases.
+
+`catsql $DATABASE_URL --table users`
+
+Print a single named table from the database.  When the table is specified,
+a step of probing all tables in the database can be skipped, speeding things
+up.
+
+`catsql $DATABASE_URL --table users --id 20`
+
+Print row(s) with column `id` (or any other name) equal to 20 in the
+table called `users`. This is usable on large databases.  The `--id
+20` filter can also be written as `--value id=20`. This form is useful
+for columns whose name collides with another parameter of `catsql`.
+
+`catsql $DATABASE_URL --color green`
+
+Print row(s) with column `color` equal to `green` in any table.
+On large databases, it would be a good idea to specify the table(s) to
+look in, but on smaller databases it is convenient to let `catsql`
+figure that out.  Tables without a column called `color` will be
+omitted from search.
+
+`catsql $DATABASE_URL --table users --grep paul`
+
+Search all columns in the `users` table for the (case-insensitive)
+sequence `paul`.  The search is done by a SQL query on the database
+server, but is nevertheless a relatively expensive operation - best for
+small to medium databases.
+
+`catsql $DATABASE_URL --grep paul`
+
+Search across the entire database - best for small databases :-).
+
+`catsql $DATABASE_URL --grep paul --csv`
+
+Output strictly in csv format, useful for piping into other tools
+such as `csvlook` in the `csvkit` package.
+
+`catsql $DATABASE_URL --sql "total < 1000"`
+
+Return rows matching a SQL condition across entire database.  Tables for
+whih the condition makes no sense are omitted.  Can be combined with
+all other flags, such as specifying the table(s), column values, etc.
+
+`catsql $DATABASE_URL --table users --grep paul --edit`
+
+Edit whatever slice of the database you are viewing using your default
+`$EDITOR`.  Only a single table can be edited at a time, since it is
+edited strictly in CSV format, which is a single-table format.
+
+`catsql $DATABASE_URL --column id,first_name`
+
+Show just the `id` and `first_name` columns of any tables that have both
+those columns.
 
 Usage
 -----
