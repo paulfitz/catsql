@@ -1,52 +1,19 @@
 catsql
 ======
-[![Downloads](https://img.shields.io/pypi/dm/catsql.svg)](https://pypi.python.org/pypi/catsql)
 
 Quickly display or edit part of a database.  Thin wrapper around SQLAlchemy.
-Pronounced "cat-skill" for some reason.
 
 Installation
 ------------
 
 `pip install catsql`
 
-Demo
-----
-
-![Terminal demo](https://cloud.githubusercontent.com/assets/118367/13240849/048e2834-d9b4-11e5-9510-7812f2fc1b71.gif)
-
 Examples
 --------
 
-Unless otherwise noted, all the flags demonstrated can be combined with
-each other.
-
 `catsql example.sqlite`
 
-Prints contents of entire database.  Suitable for small databases :-)
-
-`catsql $DATABASE_URL --count`
-
-Prints number of rows in each table of the database.  Suitable for medium
-databases whose rows can be counted without too much pain.
-
-`catsql $DATABASE_URL --limit 3`
-
-Print 3 rows from every table in the database.  Suitable for medium
-databases.
-
-`catsql $DATABASE_URL --table users`
-
-Print a single named table from the database.  When the table is specified,
-a step of probing all tables in the database can be skipped, speeding things
-up.
-
-`catsql $DATABASE_URL --table users --id 20`
-
-Print row(s) with column `id` (or any other name) equal to 20 in the
-table called `users`. This is usable on large databases.  The `--id
-20` filter can also be written as `--value id=20`. This form is useful
-for columns whose name collides with another parameter of `catsql`.
+Prints contents of entire database.  Suitable for small databases.
 
 `catsql $DATABASE_URL --color green`
 
@@ -56,16 +23,40 @@ look in, but on smaller databases it is convenient to let `catsql`
 figure that out.  Tables without a column called `color` will be
 omitted from search.
 
+`catsql $DATABASE_URL --grep paul`
+
+Search for `paul` across the entire database. Search is done on the
+database server so only results are transmitted across network.
+
+`catsql $DATABASE_URL --table users`
+
+Print a single named table from the database.  When the table is specified,
+a step of probing all tables in the database can be skipped, speeding things
+up.
+
+`catsql $DATABASE_URL --count`
+
+Prints number of rows in each table of the database.  Suitable for medium
+size databases.
+
+`catsql $DATABASE_URL --limit 3`
+
+Print 3 rows from every table in the database.  Suitable for medium
+databases.
+
+`catsql $DATABASE_URL --table users --id 20`
+
+Print row(s) with column `id` (or any other name) equal to 20 in the
+table called `users`. This is usable on large databases.  The `--id
+20` filter can also be written as `--value id=20`. This form is useful
+for columns whose name collides with another parameter of `catsql`.
+
 `catsql $DATABASE_URL --table users --grep paul`
 
 Search all columns in the `users` table for the (case-insensitive)
 sequence `paul`.  The search is done by a SQL query on the database
 server, but is nevertheless a relatively expensive operation - best for
 small to medium databases.
-
-`catsql $DATABASE_URL --grep paul`
-
-Search across the entire database - best for small databases :-).
 
 `catsql $DATABASE_URL --grep paul --csv`
 
@@ -88,6 +79,11 @@ edited strictly in CSV format, which is a single-table format.
 
 Show just the `id` and `first_name` columns of any tables that have both
 those columns.
+
+Demo
+----
+
+![Terminal demo](https://cloud.githubusercontent.com/assets/118367/13240849/048e2834-d9b4-11e5-9510-7812f2fc1b71.gif)
 
 Usage
 -----

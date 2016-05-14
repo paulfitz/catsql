@@ -344,8 +344,10 @@ class Viewer(object):
                 edit_filename = os.path.join(work, 'variant.csv')
                 copyfile(output_filename, edit_filename)
                 from subprocess import call
-                EDITOR = os.environ.get('EDITOR', 'nano')
-                call([EDITOR, edit_filename])
+                editor = os.environ.get('TABLE_EDITOR', None)
+                if not editor:
+                    editor = os.environ.get('EDITOR', 'nano')
+                call([editor, edit_filename])
                 call(['patchsql', self.url] +
                      ['--table'] + self.tables_so_far + 
                      ['--follow', output_filename, edit_filename] + 
