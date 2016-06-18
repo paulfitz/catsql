@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import argparse
 import errno
-from collections import defaultdict
+from collections import OrderedDict
 from io import StringIO, BytesIO
 import json
 import os

@@ -2,6 +2,7 @@ import argparse
 from catsql.main import catsql
 from catsql.cmdline import add_options
 import csv
+import json
 import os
 import re
 import six
@@ -51,6 +52,9 @@ class TestCommands(unittest2.TestCase):
         reader = csv.DictReader(six.StringIO(self.output_text()))
         return list(reader)
 
+    def output_json(self):
+        return json.loads(self.output_text())
+
     def tearDown(self):
         try:
             shutil.rmtree(os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -90,3 +94,8 @@ class TestCommands(unittest2.TestCase):
         result = self.output_rows()
         assert len(result) == 1
         assert result[0]['DIGIT'] == '3'
+
+    def test_json(self):
+        catsql([self.number_db, "--json", self.output_file])
+        result = self.output_json()
+        assert result['count'] == 5
