@@ -52,8 +52,9 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 class Viewer(object):
-    def __init__(self, args, remainder):
+    def __init__(self, args, remainder, sys_args):
         self.args = args
+        self.sys_args = sys_args
         self.failure = False
         self.values = None
         self.setup_filters(args)
@@ -70,6 +71,7 @@ class Viewer(object):
         self.url = args.catsql_database_url
         self.tables = self.decomma(args.table)
         self.selected_columns = self.decomma(args.column)
+        self.ordering = self.decomma(args.order)
 
         self.context_columns = set()
         self.context_filters = dict()
@@ -139,7 +141,7 @@ class Viewer(object):
                 parser.add_argument('--{}'.format(name), nargs=1, default=None)
             except argparse.ArgumentError:
                 column_names.remove(name)
-        self.values = vars(parser.parse_args(sys.argv[1:]))
+        self.values = vars(parser.parse_args(self.sys_args))
         dud = []
         for key, val in self.values.items():
             if (key not in column_names) or val is None:
@@ -229,6 +231,8 @@ class Viewer(object):
                 self.output_in_csv = True
                 self.args.safe_null = True
                 self.args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
+            elif self.args.output:
+                self.output_file = open(self.args.output[0], 'wt')
 
             table_items = self.Base.metadata.tables.items()
 
@@ -278,13 +282,32 @@ class Viewer(object):
                 if self.args.grep:
                     rows = self.add_grep(table, rows, self.args.grep[0], case_sensitive=False)
 
-                primary_key = table.primary_key
-                if self.selected_columns:
-                    rows = rows.order_by(*[table.c[name] for name in self.selected_columns])
-                elif len(primary_key) >= 1:
-                    rows = rows.order_by(*primary_key)
-                elif len(table.c) >= 1:
-                    rows = rows.order_by(*table.c)
+                if self.args.order:
+                    if 'none' in self.args.order:
+                        pass
+                    else:
+                        orders = []
+                        for name in self.ordering:
+                            c = name[-1]
+                            order = name
+                            if c == '+' or c == '-':
+                                order = order[:-1]
+                            order = table.c[order]
+                            if c == '+':
+                                order = asc(order)
+                            elif c == '-':
+                                order = desc(order)
+                            orders.append(order)
+                        rows = rows.order_by(*orders)
+
+                else:
+                    primary_key = table.primary_key
+                    if self.selected_columns:
+                        rows = rows.order_by(*[table.c[name] for name in self.selected_columns])
+                    elif len(primary_key) >= 1:
+                        rows = rows.order_by(*primary_key)
+                    elif len(table.c) >= 1:
+                        rows = rows.order_by(*table.c)
 
                 if self.args.limit:
                     rows = rows.limit(int(self.args.limit[0]))
@@ -397,20 +420,20 @@ class Viewer(object):
         with open(filename, 'w') as fout:
             fout.write(json.dumps(result, indent=2))
 
-def catsql():
+def catsql(sys_args):
 
     parser = argparse.ArgumentParser(description='Quickly display and edit a slice of a database.',
                                      formatter_class=SmartFormatter)
 
     cmdline.add_options(parser)
-    args, remainder = parser.parse_known_args()
-    viewer = Viewer(args, remainder)
+    args, remainder = parser.parse_known_args(sys_args)
+    viewer = Viewer(args, remainder, sys_args)
     viewer.show()
 
 
 def main():
     try:
-        catsql()
+        catsql(sys.argv[1:])
     except IOError as error:
         if error.errno == errno.EPIPE:
             # totally benign e.g. pipe through head/tail
