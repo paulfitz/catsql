@@ -2,9 +2,9 @@ import argparse
 from catsql.main import catsql
 from catsql.cmdline import add_options
 import csv
-import StringIO
 import os
 import re
+import six
 import shutil
 import sqlite3
 import unittest2
@@ -48,7 +48,7 @@ class TestCommands(unittest2.TestCase):
         return len(re.findall('\n', self.output_text()))
 
     def output_rows(self):
-        reader = csv.DictReader(StringIO.StringIO(self.output_text()))
+        reader = csv.DictReader(six.StringIO(self.output_text()))
         return list(reader)
 
     def tearDown(self):

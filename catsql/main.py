@@ -3,8 +3,8 @@
 from __future__ import print_function
 
 import argparse
-from collections import OrderedDict
 import errno
+from collections import defaultdict
 from io import StringIO, BytesIO
 import json
 import os
