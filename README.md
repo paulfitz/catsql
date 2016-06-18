@@ -1,7 +1,9 @@
+[![Build Status](https://travis-ci.org/paulfitz/catsql.svg?branch=master)](https://travis-ci.org/paulfitz/catsql)
+
 catsql
 ======
 
-Quickly display or edit part of a database.  Thin wrapper around SQLAlchemy.
+A `cat` for SQL databases.
 
 Installation
 ------------
