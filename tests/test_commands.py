@@ -95,7 +95,12 @@ class TestCommands(unittest2.TestCase):
         assert len(result) == 1
         assert result[0]['DIGIT'] == '3'
 
-    def test_json(self):
+    def test_json_basic(self):
         catsql([self.number_db, "--json", self.output_file])
+        result = self.output_json()
+        assert result['count'] == 5
+
+    def test_json_filtered(self):
+        catsql([self.number_db, "--column", "DIGIT",  "--json", self.output_file])
         result = self.output_json()
         assert result['count'] == 5

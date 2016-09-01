@@ -406,11 +406,11 @@ class Viewer(object):
         results = result['results'] = []
         names = []
         idxs = []
-        for idx, column in enumerate(table.columns):
-            if not self.ok_column(column.name):
+        for idx, column in enumerate(self.columns):
+            if not self.ok_column(column):
                 continue
             idxs.append(idx)
-            names.append(column.name)
+            names.append(column)
         for row in rows:
             od = OrderedDict()
             for i, idx in enumerate(idxs):
