@@ -104,3 +104,8 @@ class TestCommands(unittest2.TestCase):
         catsql([self.number_db, "--column", "DIGIT",  "--json", self.output_file])
         result = self.output_json()
         assert result['count'] == 5
+
+    def test_types(self):
+        catsql([self.number_db, "--types",  "--json", self.output_file])
+        result = self.output_json()
+        assert result['results'][0]['DIGIT'] == 'INTEGER'

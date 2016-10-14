@@ -10,7 +10,8 @@ import json
 import os
 from sqlalchemy import *
 from sqlalchemy import types
-from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, SAWarning
+from sqlalchemy.exc import (ArgumentError, CompileError, OperationalError, InvalidRequestError,
+                            SAWarning)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import create_session, load_only, mapper
 from sqlalchemy.sql import expression, functions
@@ -315,6 +316,20 @@ class Viewer(object):
                 self.header_shown = False
                 self.start_table(table_name, table.columns.keys())
                 viable_tables.append(table_name)
+
+                if self.args.types:
+                    types = []
+                    for name in self.columns:
+                        if not self.ok_column(name):
+                            continue
+                        try:
+                            column = table.c[name]
+                            sql_type = column.type
+                            sql_name = str(column.type)  # make sure not nulltype
+                        except CompileError:
+                            sql_name = None
+                        types.append(sql_name)
+                    rows = [types]
 
                 if self.output_in_json:
                     if not self.show_header_on_need():

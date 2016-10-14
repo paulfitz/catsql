@@ -91,11 +91,12 @@ Usage
 -----
 
 ```
-usage: catsql [-h] [--column COLUMN] [--count] [--csv] [--edit] [--grep GREP]
-              [--limit LIMIT] [--load-bookmark] [--safe-null]
-              [--save-bookmark SAVE_BOOKMARK] [--sql SQL] [--table TABLE]
-              [--terse] [--value VALUE] [--verbose]
-              catsql_database_url
+usage: main.py [-h] [--column COLUMN] [--count] [--csv] [--distinct] [--edit]
+               [--grep GREP] [--json JSON] [--limit LIMIT] [--load-bookmark]
+               [--output OUTPUT] [--safe-null] [--save-bookmark SAVE_BOOKMARK]
+               [--sql SQL] [--table TABLE] [--terse] [--types] [--value VALUE]
+               [--verbose] [--order ORDER]
+               catsql_database_url
 
 Quickly display and edit a slice of a database.
 
@@ -109,13 +110,18 @@ optional arguments:
   --column COLUMN       Column to include (defaults to all columns). Can be a
                         comma separated list of multiple columns.
   --count               Show row counts instead of actual data.
-  --csv                 Output strictly in CSV format.
+  --csv                 Output strictly in CSV format. Only one table can be
+                        shown.
+  --distinct            Show distinct rows only, hiding duplicates.
   --edit                Edit original table in your favorite editor. Respects
                         $EDITOR environment variable.
   --grep GREP           Search cells for occurrence of a text fragment.
                         Translated to SQL query, performed by database.
+  --json JSON           Save results to a json file. Only one table allowed.
   --limit LIMIT         Maximum number of rows per table.
   --load-bookmark       Load a set of filters from a file.
+  --output OUTPUT       Save output to specified file. Incompatible with
+                        --edit.
   --safe-null           Encode nulls in a reversible way.
   --save-bookmark SAVE_BOOKMARK
                         Save the current set of filters specified to a file.
@@ -126,11 +132,17 @@ optional arguments:
   --table TABLE         Table to include (defaults to all tables). Can be a
                         comma separated list of multiple tables.
   --terse               Hide any columns with predetermined values.
+  --types               Show column types instead of actual data.
   --value VALUE         Add a column=value filter. Example:
                           --value id=ID --value name=Jupiter
                         As a shortcut you can also do:
                           --id ID --name Jupiter
   --verbose             Show raw SQL queries as they are made.
+  --order ORDER         Columns to order by. Can be a comma separated list of
+                        columns names. Add + or - to end of name to specify
+                        ascending or descending order. Specify "none" to
+                        disable ordering completely (by default we always try
+                        to apply some order)
 ```
 
 License

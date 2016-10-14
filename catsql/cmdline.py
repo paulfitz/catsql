@@ -60,6 +60,9 @@ def add_options(parser):
     parser.add_argument('--terse', default=False, action='store_true',
                         help='Hide any columns with predetermined values.')
 
+    parser.add_argument('--types', default=False, action='store_true',
+                        help='Show column types instead of actual data.')
+
     parser.add_argument('--value', action='append',
                         help='R|Add a column=value filter. Example:\n'
                         '  --value id=ID --value name=Jupiter\n'
