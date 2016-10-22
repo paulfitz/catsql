@@ -5,20 +5,19 @@ from __future__ import print_function
 import argparse
 import errno
 from collections import OrderedDict
+from datetime import datetime
 from io import StringIO, BytesIO
 import json
 import os
-from sqlalchemy import *
-from sqlalchemy import types
+from sqlalchemy import Column, MetaData, Table, text, types
 from sqlalchemy.exc import (ArgumentError, CompileError, OperationalError, InvalidRequestError,
                             SAWarning)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import create_session, load_only, mapper
 from sqlalchemy.sql import expression, functions
 import sys
 import warnings
 
 from catsql import cmdline
+from catsql.database import Database
 from catsql.nullify import Nullify
 
 if sys.version_info[0] == 2:
@@ -51,6 +50,20 @@ class SmartFormatter(argparse.HelpFormatter):
         if text.startswith('R|'):
             return text[2:].splitlines()
         return argparse.HelpFormatter._split_lines(self, text, width)
+
+
+
+def recursive_find(data, key):
+    result = []
+    for k, v in data.items():
+        if k == key:
+            result.append(int(v))  # INT IS TMP PFHIT
+        elif isinstance(v, dict):
+            result += recursive_find(v, key)
+        elif isinstance(v, list):
+            for item in v:
+                result += recursive_find(item, key)
+    return result
 
 class Viewer(object):
     def __init__(self, args, remainder, sys_args):
@@ -93,6 +106,11 @@ class Viewer(object):
         self.row_filter = args.sql
         self.output_in_csv = args.csv
         self.output_in_json = args.json
+        self.output_in_sqlite = args.sqlite
+
+        self.target_db = None
+        if self.output_in_sqlite:
+            self.target_db = Database(self.output_in_sqlite[0])
 
         if args.value is not None:
             for context in args.value:
@@ -104,34 +122,15 @@ class Viewer(object):
                     self.context_columns.add(context)
 
     def connect_database(self):
-        self.Base = declarative_base()
-        try:
-            self.engine = create_engine(self.url, echo=self.args.verbose)
-        except ImportError as e:
-            print("Support library for this database not installed - {}".format(e))
-            exit(1)
-        except ArgumentError:
-            try:
-                # maybe this is a local sqlite database?
-                sqlite_url = 'sqlite:///{}'.format(self.url)
-                self.engine = create_engine(sqlite_url, echo=self.args.verbose)
-                self.url = self.args.catsql_database_url = sqlite_url
-            except ArgumentError:
-                # no joy, recreate the original problem and die.
-                self.engine = create_engine(self.url, echo=self.args.verbose)
-
-        only = None
-        if self.tables:
-            only = list(self.tables)
-        self.Base.metadata.reflect(self.engine, only=only)
-
-        self.session = create_session(bind=self.engine)
+        database = Database(self.url, verbose=self.args.verbose, tables=self.tables)
+        self.database = database
+        self.url = self.args.catsql_database_url = database.full_url
 
     def process_remainder(self, remainder):
         column_names = set()
         if len(remainder) == 0:
             return
-        for table in self.Base.metadata.tables.values():
+        for table in self.database.tables_metadata.values():
             column_names |= set(table.columns.keys())
         if 'catsql_database_url' in column_names:
             column_names.remove('catsql_database_url')
@@ -174,14 +173,14 @@ class Viewer(object):
             return True
         self.header_considered = True
         if len(self.tables_so_far) > 0:
-            if self.output_in_csv or self.output_in_json:
+            if self.output_in_csv or self.output_in_json or self.output_in_sqlite:
                 self.failure = True
                 self.tables_so_far.append(self.table_name)
                 return False
             print("", file=self.output_file)
-        if not (self.output_in_csv or self.output_in_json):
+        if not (self.output_in_csv or self.output_in_json or self.output_in_sqlite):
             print('== {} =='.format(self.table_name), file=self.output_file)
-        if not self.output_in_json:
+        if not (self.output_in_json or self.output_in_sqlite):
             header_writer = CsvRowWriter()
 
             header = header_writer.writerow(list(column for column in self.columns 
@@ -203,8 +202,8 @@ class Viewer(object):
             if parts != '':
                 parts = parts + ' // '
             part = functions.coalesce(expression.cast(column,
-                                                      types.Unicode),
-                                      '')
+                                        types.Unicode),
+                                        '')
             parts = parts + part
         if case_sensitive:
             query = query.filter(parts.contains(sequence))
@@ -235,7 +234,7 @@ class Viewer(object):
             elif self.args.output:
                 self.output_file = open(self.args.output[0], 'wt')
 
-            table_items = self.Base.metadata.tables.items()
+            table_items = self.database.tables_metadata.items()
 
             viable_tables = []
             for table_name, table in sorted(table_items):
@@ -251,9 +250,10 @@ class Viewer(object):
                             ok = False
                     if not ok:
                         continue
-                    rows = self.session.query(*[table.c[name] for name in self.selected_columns])
+                    rows = self.database.session.query(*[table.c[name]
+                                                         for name in self.selected_columns])
                 else:
-                    rows = self.session.query(table)
+                    rows = self.database.session.query(table)
 
                 if self.args.distinct:
                     rows = rows.distinct()
@@ -276,7 +276,15 @@ class Viewer(object):
                 if self.values is not None:
                     try:
                         for key, val in self.values.items():
-                            rows = rows.filter(table.c[key] == val)
+                            if val == "" or val[0] != '@':
+                                rows = rows.filter(table.c[key] == val)
+                                continue
+                            file_filter = val[1:]
+                            with open(file_filter, 'r') as fin:
+                                data = json.load(fin)
+                                vals = recursive_find(data, key)
+                                print(vals)
+                                rows = rows.filter(table.c[key].in_(vals))
                     except InvalidRequestError as e:
                         continue
 
@@ -318,7 +326,7 @@ class Viewer(object):
                 viable_tables.append(table_name)
 
                 if self.args.types:
-                    types = []
+                    column_types = []
                     for name in self.columns:
                         if not self.ok_column(name):
                             continue
@@ -328,13 +336,55 @@ class Viewer(object):
                             sql_name = str(column.type)  # make sure not nulltype
                         except CompileError:
                             sql_name = None
-                        types.append(sql_name)
-                    rows = [types]
+                        column_types.append(sql_name)
+                    rows = [column_types]
 
-                if self.output_in_json:
+                if self.target_db:
+                    if table_name in self.target_db.tables_metadata.keys():
+                        # clear previous results
+                        self.target_db.tables_metadata[table_name].drop(self.target_db.engine)
+                    target = { 'table': None }
+                    def fallback_type(example):
+                        if isinstance(example, bool):
+                            return types.Boolean
+                        elif isinstance(example, int):
+                            return types.Integer
+                        elif isinstance(example, float):
+                            return types.Float
+                        elif isinstance(example, datetime):
+                            return types.DateTime
+                        return types.UnicodeText
+                    def create_table(data):
+                        if target['table'] is not None:
+                            return
+                        columns = []
+                        for name in self.columns:
+                            if not self.ok_column(name):
+                                continue
+                            column = table.c[name]
+                            sql_type = column.type
+                            if isinstance(sql_type, types.NullType):
+                                example = data.get(name)
+                                sql_type = fallback_type(example)
+                            columns.append(Column(name, sql_type,
+                                                  primary_key=column.primary_key))
+                        metadata = MetaData(bind=self.target_db.engine)
+                        target['table'] = Table(table_name, metadata, *columns)
+                        target['table'].create(self.target_db.engine)
+
+                    for row in rows:
+                        data = dict((self.columns[c], cell)
+                                    for c, cell in enumerate(row)
+                                    if self.ok_column(self.columns[c]))
+                        create_table(data)
+                        target['table'].insert().execute(data)
+                    create_table({})
+
+                if self.output_in_json or self.output_in_sqlite:
                     if not self.show_header_on_need():
                         continue
-                    self.save_as_json(table, rows, self.output_in_json[0])
+                    if self.output_in_json:
+                        self.save_as_json(table, rows, self.output_in_json[0])
                 elif not self.args.count:
                     # csv spec is that eol is \r\n; we ignore this for our purposes
                     # for good reasons that unfortunately there isn't space to describe
