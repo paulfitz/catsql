@@ -53,6 +53,9 @@ def add_options(parser):
                         'omitted.'
     )
 
+    parser.add_argument('--sqlite', nargs=1, required=False, default=None,
+                        help='Save results to a sqlite file.')
+
     parser.add_argument('--table', action='append',
                         help='Table to include (defaults to all tables). '
                         'Can be a comma separated list of multiple tables.')

@@ -31,11 +31,13 @@ class TestCommands(unittest2.TestCase):
     def setUp(self):
         self.work = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'tmp_data')
-        os.makedirs(self.work)
+        if not os.path.isdir(self.work):
+            os.makedirs(self.work)
         number_file = "{}/numbers.sqlite".format(self.work)
         numbers(number_file)
         self.number_db = 'sqlite:///{}'.format(number_file)
         self.output_file = "{}/output.txt".format(self.work)
+        self.output_file_sql = "{}/output.sqlite".format(self.work)
         self.output_text_cache = None
 
     def output_text(self):
@@ -109,3 +111,10 @@ class TestCommands(unittest2.TestCase):
         catsql([self.number_db, "--types",  "--json", self.output_file])
         result = self.output_json()
         assert result['results'][0]['DIGIT'] == 'INTEGER'
+
+    def test_sqlite_basic(self):
+        catsql([self.number_db, "--sqlite", self.output_file_sql])
+        catsql([self.output_file_sql, "--json", self.output_file])
+        result = self.output_json()
+        assert result['count'] == 5
+
