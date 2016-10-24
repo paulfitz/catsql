@@ -13,6 +13,8 @@ Local `.sqlite` databases may be specified with their filename directly.
 Also has a `--edit` option that will show the ouput in your default editor.
 If you make any changes, they will be applied back to the original source.
 
+[![sql cat](https://cloud.githubusercontent.com/assets/118367/19632355/b07205ec-9973-11e6-95ad-39492aa10cca.jpg)](https://memegenerator.net/instance/56747210)
+
 Installation
 ------------
 
