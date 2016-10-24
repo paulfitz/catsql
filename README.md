@@ -3,12 +3,24 @@
 catsql
 ======
 
-A `cat` for SQL databases.
+A `cat` for SQL databases. Show slices of a database in your console.  Save them
+as `.csv`, `.json`, or `.sqlite` files.
+
+Databases are read using SQLAlchemy.  They are specified using [database
+urls](http://docs.sqlalchemy.org/en/rel_1_0/core/engines.html#database-urls).
+Local `.sqlite` databases may be specified with their filename directly.
+
+Also has a `--edit` option that will show the ouput in your default editor.
+If you make any changes, they will be applied back to the original source.
 
 Installation
 ------------
 
 `pip install catsql`
+
+Make sure you install the [python driver](http://docs.sqlalchemy.org/en/rel_1_0/core/engines.html#database-urls)
+needed for your particular database.
+
 
 Examples
 --------
@@ -129,6 +141,7 @@ optional arguments:
                         "total < 1000", "created_at > now() - interval '1
                         day'". Tables that don't have the columns mentioned
                         are omitted.
+  --sqlite SQLITE       Save results to a sqlite file.
   --table TABLE         Table to include (defaults to all tables). Can be a
                         comma separated list of multiple tables.
   --terse               Hide any columns with predetermined values.
