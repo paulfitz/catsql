@@ -24,7 +24,7 @@ def add_options(parser):
                         help='Edit original table in your favorite editor. '
                         'Respects $EDITOR environment variable.')
 
-    parser.add_argument('--grep', nargs=1, required=False, default=None,
+    parser.add_argument('--grep', action='append',
                         help='Search cells for occurrence of a text fragment. '
                         'Translated to SQL query, performed by database.')
 
