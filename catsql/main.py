@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import argparse
 import errno
@@ -52,18 +53,6 @@ class SmartFormatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-
-def recursive_find(data, key):
-    result = []
-    for k, v in data.items():
-        if k == key:
-            result.append(int(v))  # INT IS TMP PFHIT
-        elif isinstance(v, dict):
-            result += recursive_find(v, key)
-        elif isinstance(v, list):
-            for item in v:
-                result += recursive_find(item, key)
-    return result
 
 class Viewer(object):
     def __init__(self, args, remainder, sys_args):
@@ -192,25 +181,6 @@ class Viewer(object):
         self.tables_so_far.append(self.table_name)
         return True
 
-    def add_grep(self, table, query, sequence, case_sensitive):
-        # functions.concat would be neater, but doesn't seem to translate
-        # correctly on sqlite
-        parts = ''
-        for idx, column in enumerate(table.columns):
-            if not self.ok_column(column.name):
-                continue
-            if parts != '':
-                parts = parts + ' // '
-            part = functions.coalesce(expression.cast(column,
-                                        types.Unicode),
-                                        '')
-            parts = parts + part
-        if case_sensitive:
-            query = query.filter(parts.contains(sequence))
-        else:
-            query = query.filter(parts.ilike('%%' + sequence + '%%'))
-        return query
-
     def show(self):
 
         self.tables_so_far = []
@@ -237,89 +207,34 @@ class Viewer(object):
             table_items = self.database.tables_metadata.items()
 
             viable_tables = []
-            for table_name, table in sorted(table_items):
 
-                if self.tables is not None:
-                    if table_name not in self.tables:
-                        continue
+            q = self.database.query(columns=self.selected_columns)
+            if self.args.distinct:
+                q = q.distinct()
+            if self.row_filter is not None:
+                q = q.where_sqls(self.row_filter)
+            if self.args.value is not None:
+                q = q.where_kv(self.context_filters)
+            if self.values is not None:
+                q = q.where_kv_with_expansion(self.values)
+            if self.args.grep:
+                for pattern in self.args.grep:
+                    q = q.grep(pattern, case_sensitive=False)
+            if self.args.order:
+                if 'none' not in self.args.order:
+                    q.order(self.ordering)
+            else:
+                q.order()
+            if self.args.limit:
+                q = q.limit(int(self.args.limit[0]))
 
-                if self.selected_columns is not None:
-                    ok = True
-                    for name in self.selected_columns:
-                        if name not in table.c:
-                            ok = False
-                    if not ok:
-                        continue
-                    rows = self.database.session.query(*[table.c[name]
-                                                         for name in self.selected_columns])
-                else:
-                    rows = self.database.session.query(table)
+            ts = list(q)
+            ts.sort(key=lambda t: t['table_name'])
 
-                if self.args.distinct:
-                    rows = rows.distinct()
-
-                if self.row_filter is not None:
-                    for filter in self.row_filter:
-                        rows = rows.filter(text(filter))
-                    try:
-                        count = rows.count()
-                    except OperationalError as e:
-                        # should cache these and show if no results at all found
-                        continue
-
-                if self.args.value is not None:
-                    try:
-                        rows = rows.filter_by(**self.context_filters)
-                    except InvalidRequestError as e:
-                        continue
-
-                if self.values is not None:
-                    try:
-                        for key, val in self.values.items():
-                            if val == "" or val[0] != '@':
-                                rows = rows.filter(table.c[key] == val)
-                                continue
-                            file_filter = val[1:]
-                            with open(file_filter, 'r') as fin:
-                                data = json.load(fin)
-                                vals = recursive_find(data, key)
-                                print(vals)
-                                rows = rows.filter(table.c[key].in_(vals))
-                    except InvalidRequestError as e:
-                        continue
-
-                if self.args.grep:
-                    rows = self.add_grep(table, rows, self.args.grep[0], case_sensitive=False)
-
-                if self.args.order:
-                    if 'none' in self.args.order:
-                        pass
-                    else:
-                        orders = []
-                        for name in self.ordering:
-                            c = name[-1]
-                            order = name
-                            if c == '+' or c == '-':
-                                order = order[:-1]
-                            order = table.c[order]
-                            if c == '+':
-                                order = asc(order)
-                            elif c == '-':
-                                order = desc(order)
-                            orders.append(order)
-                        rows = rows.order_by(*orders)
-
-                else:
-                    primary_key = table.primary_key
-                    if self.selected_columns:
-                        rows = rows.order_by(*[table.c[name] for name in self.selected_columns])
-                    elif len(primary_key) >= 1:
-                        rows = rows.order_by(*primary_key)
-                    elif len(table.c) >= 1:
-                        rows = rows.order_by(*table.c)
-
-                if self.args.limit:
-                    rows = rows.limit(int(self.args.limit[0]))
+            for t in ts:
+                table_name = t['table_name']
+                table = t['table']
+                rows = t['rows']
 
                 self.header_shown = False
                 self.start_table(table_name, table.columns.keys())

@@ -1,3 +1,4 @@
+from catsql.filter import Filter
 from sqlalchemy import create_engine, types
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.declarative import declarative_base
@@ -9,9 +10,6 @@ class Database(object):
         self._full_url = self.url
         self.verbose = verbose
         self.tables = tables
-        self.Base = None
-        self.engine = None
-        self._session = None
         self.connect_database()
 
     def connect_database(self):
@@ -49,3 +47,6 @@ class Database(object):
     @property
     def tables_metadata(self):
         return self.Base.metadata.tables
+
+    def query(self, columns=None):
+        return Filter(self, columns=columns)
