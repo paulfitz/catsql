@@ -99,7 +99,7 @@ class Viewer(object):
 
         self.target_db = None
         if self.output_in_sqlite:
-            self.target_db = Database(self.output_in_sqlite[0])
+            self.target_db = Database(self.output_in_sqlite[0], can_create=True)
 
         if args.value is not None:
             for context in args.value:
@@ -209,6 +209,10 @@ class Viewer(object):
             viable_tables = []
 
             q = self.database.query(columns=self.selected_columns)
+            touchable = True
+            if self.args.select_from:
+                q = q.select_from(self.args.select_from[0])
+                touchable = False
             if self.args.distinct:
                 q = q.distinct()
             if self.row_filter is not None:
@@ -223,7 +227,7 @@ class Viewer(object):
             if self.args.order:
                 if 'none' not in self.args.order:
                     q.order(self.ordering)
-            else:
+            elif touchable:
                 q.order()
             if self.args.limit:
                 q = q.limit(int(self.args.limit[0]))

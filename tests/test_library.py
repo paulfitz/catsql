@@ -20,6 +20,16 @@ class TestLibrary(unittest2.TestCase):
         self.assertEquals(len(q), 1)
         self.assertEquals(q.rows[0].NAME, 'five')
 
+    def test_order_asc(self):
+        q = catsql.connect(self.workspace.number_db)
+        q.order(['NAME+'])
+        self.assertEquals(q.rows[0].NAME, 'five')
+
+    def test_order_desc(self):
+        q = catsql.connect(self.workspace.number_db)
+        q.order(['NAME-'])
+        self.assertEquals(q.rows[0].NAME, 'two')
+
     def test_limit(self):
         q = catsql.connect(self.workspace.number_db)
         q.limit(2)
