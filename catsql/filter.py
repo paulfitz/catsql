@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 import json
-from sqlalchemy import Column, MetaData, Table, text, types
+from sqlalchemy import asc, Column, desc, MetaData, Table, text, types
 from sqlalchemy.exc import (ArgumentError, CompileError, OperationalError, InvalidRequestError,
-                            SAWarning)
+                            NoSuchColumnError, SAWarning)
 from sqlalchemy.sql import expression, functions
 
 def recursive_find(data, key):
@@ -61,12 +61,22 @@ class Filter(object):
         self.queries = active_queries
         return self
 
+    def select_from(self, sql_text):
+        rows = self.database.session.execute(text(sql_text))
+        self.queries = [
+            {
+                'table_name': 'custom',
+                'table': rows._metadata,
+                'rows': rows
+            }
+        ]
+        return self
+
     def grep(self, pattern, case_sensitive=False):
         for query in self.queries:
             query['rows'] = self._add_grep(query['table'], query['rows'], pattern,
                                            case_sensitive=case_sensitive)
         return self
-
 
     def limit(self, limit):
         for query in self.queries:

@@ -46,6 +46,9 @@ def add_options(parser):
     parser.add_argument('--save-bookmark', nargs=1, required=False, default=None,
                         help='Save the current set of filters specified to a file.')
 
+    parser.add_argument('--select-from', nargs=1, required=False, default=None,
+                        help='Supply full SQL: "select ... from ..." etc.')
+
     parser.add_argument('--sql', action='append',
                         help='Add a raw SQL filter for rows to include.  Example: '
                         '"total < 1000", "created_at > now() - interval \'1 day\'". '
