@@ -163,7 +163,8 @@ class Viewer(object):
         self.header_considered = True
         if len(self.tables_so_far) > 0:
             if self.output_in_csv or self.output_in_json or self.output_in_sqlite:
-                self.failure = True
+                if not self.output_in_sqlite:
+                    self.failure = True
                 self.tables_so_far.append(self.table_name)
                 return False
             print("", file=self.output_file)
@@ -262,7 +263,7 @@ class Viewer(object):
                     if table_name in self.target_db.tables_metadata.keys():
                         # clear previous results
                         self.target_db.tables_metadata[table_name].drop(self.target_db.engine)
-                    target = { 'table': None }
+                    target = { 'table': None, 'rows': [] }
                     def fallback_type(example):
                         if isinstance(example, bool):
                             return types.Boolean
@@ -282,7 +283,12 @@ class Viewer(object):
                                 continue
                             column = table.c[name]
                             sql_type = column.type
-                            if isinstance(sql_type, types.NullType):
+                            try:
+                                self.target_db.engine.dialect.type_compiler.process(sql_type)
+                            except CompileError:
+                                # some types need to be approximated
+                                sql_type = None
+                            if sql_type is None or isinstance(sql_type, types.NullType):
                                 example = data.get(name)
                                 sql_type = fallback_type(example)
                             columns.append(Column(name, sql_type,
@@ -291,13 +297,21 @@ class Viewer(object):
                         target['table'] = Table(table_name, metadata, *columns)
                         target['table'].create(self.target_db.engine)
 
+                    def add_row(data):
+                        if data:
+                            target['rows'].append(data)
+                        if len(target['rows']) > 10000 or not data:
+                            target['table'].insert().execute(target['rows'])
+                            target['rows'] = []
+
                     for row in rows:
                         data = dict((self.columns[c], cell)
                                     for c, cell in enumerate(row)
                                     if self.ok_column(self.columns[c]))
                         create_table(data)
-                        target['table'].insert().execute(data)
+                        add_row(data)
                     create_table({})
+                    add_row(None)
 
                 if self.output_in_json or self.output_in_sqlite:
                     if not self.show_header_on_need():
