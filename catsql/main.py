@@ -304,8 +304,13 @@ class Viewer(object):
                             target['table'].insert().execute(target['rows'])
                             target['rows'] = []
 
+                    def sqlited(data):
+                        if isinstance(data, dict) or isinstance(data, list):
+                            return json.dumps(data)
+                        return data
+
                     for row in rows:
-                        data = dict((self.columns[c], cell)
+                        data = dict((self.columns[c], sqlited(cell))
                                     for c, cell in enumerate(row)
                                     if self.ok_column(self.columns[c]))
                         create_table(data)
