@@ -1,6 +1,6 @@
-
 import re
-import sys
+from six import string_types
+
 
 class Nullify(object):
 
@@ -10,9 +10,7 @@ class Nullify(object):
         pass
 
     def stringy(self, value):
-        if sys.version_info[0] == 2:
-            return isinstance(value, basestring)
-        return isinstance(value, str)
+        return isinstance(value, string_types)
 
     def encode_null(self, value):
         if value is None:

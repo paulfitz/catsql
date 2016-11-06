@@ -6,6 +6,7 @@ import unittest2
 
 from tests.workspace import Workspace
 
+
 class TestLibrary(unittest2.TestCase):
 
     def setUp(self):
@@ -59,11 +60,11 @@ class TestLibrary(unittest2.TestCase):
 
     def test_where_kv(self):
         q = catsql.connect(self.workspace.number_db)
-        q.where_kv({ 'DIGIT': 4 })
+        q.where_kv({'DIGIT': 4})
         self.assertEquals(len(q), 1)
         self.assertEquals(len(q[0]['rows'].all()), 1)
         self.assertEquals(q.row.DIGIT, 4)
-        
+
     def test_where_kv_with_expansion(self):
         q = catsql.connect(self.workspace.number_db)
         digits = [
@@ -76,15 +77,15 @@ class TestLibrary(unittest2.TestCase):
         ]
         fname = self.workspace.filename('digit.txt')
         json.dump(digits, open(fname, 'w'))
-        q.where_kv_with_expansion({ 'DIGIT': '@{}'.format(fname) })
+        q.where_kv_with_expansion({'DIGIT': '@{}'.format(fname)})
         q.order(['DIGIT'])
         self.assertEquals(len(q), 1)
         self.assertEquals(len(q.rows.all()), 2)
         self.assertEquals(q.rows[0].DIGIT, 2)
         self.assertEquals(q.rows[1].DIGIT, 3)
-        
+
     def test_distinct(self):
-        self.workspace.numbers(self.workspace.number_file) # add duplicates
+        self.workspace.numbers(self.workspace.number_file)  # add duplicates
         q = catsql.connect(self.workspace.number_db)
         self.assertEquals(len(q), 1)
         self.assertEquals(len(q.rows.all()), 10)
@@ -110,7 +111,7 @@ class TestLibrary(unittest2.TestCase):
     def test_where_kv_multiple_tables(self):
         self.workspace.add_product_table()
         q = catsql.connect(self.workspace.number_db)
-        q.where_kv({ 'CODE': '.' })
+        q.where_kv({'CODE': '.'})
         self.assertEquals(len(q), 1)
 
     def test_where_kv_with_expansion_multiple_tables(self):
@@ -126,7 +127,7 @@ class TestLibrary(unittest2.TestCase):
         ]
         fname = self.workspace.filename('code.txt')
         json.dump(codes, open(fname, 'w'))
-        q.where_kv_with_expansion({ 'CODE': '@{}'.format(fname) })
+        q.where_kv_with_expansion({'CODE': '@{}'.format(fname)})
         q.order(['CODE'])
         self.assertEquals(len(q), 1)
         self.assertEquals(len(q.rows.all()), 2)
@@ -136,4 +137,3 @@ class TestLibrary(unittest2.TestCase):
         q = catsql.connect(self.workspace.number_db)
         q.where_sql('CODE = "."')
         self.assertEquals(len(q), 1)
-

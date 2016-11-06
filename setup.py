@@ -4,8 +4,9 @@ import sys
 from setuptools import setup
 
 install_requires = [
-    "daff>=1.3.14",
-    "SQLAlchemy>=1.0.11"
+    "daff >= 1.3.14",
+    "six >= 1.7.3",
+    "SQLAlchemy >= 1.0.11"
 ]
 
 if sys.version_info[0] == 2:

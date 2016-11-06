@@ -1,9 +1,10 @@
 from catsql.filter import Filter
 import os
-from sqlalchemy import create_engine, types
+from sqlalchemy import create_engine
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import create_session
+
 
 class Database(object):
     def __init__(self, url, verbose=False, tables=None, can_create=False):

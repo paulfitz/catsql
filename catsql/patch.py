@@ -18,6 +18,7 @@ else:
 
 warnings.simplefilter("ignore", category=SAWarning)
 
+
 def fix_nulls(table, active):
     if not active:
         return
@@ -25,6 +26,7 @@ def fix_nulls(table, active):
     for row in table:
         for i in range(0, len(row)):
             row[i] = nullify.decode_null(row[i])
+
 
 def main():
 
@@ -56,17 +58,14 @@ def main():
 
     if args.patch:
         with open(args.patch[0], 'rt') as fin:
-            reader = csv.reader(fin)
             patch = list(csv.reader(fin))
             patch = daff.Coopy.tablify(patch)
 
     if args.follow:
         with open(args.follow[0], 'rt') as fin:
-            reader = csv.reader(fin)
             table0 = list(csv.reader(fin))
             fix_nulls(table0, args.safe_null)
         with open(args.follow[1], 'rt') as fin:
-            reader = csv.reader(fin)
             table1 = list(csv.reader(fin))
             fix_nulls(table1, args.safe_null)
         patch = daff.Coopy.diff(table0, table1)

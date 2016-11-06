@@ -84,4 +84,3 @@ def add_options(parser):
                         'Add + or - to end of name to specify ascending or descending '
                         'order.  Specify "none" to disable ordering completely '
                         '(by default we always try to apply some order)')
-

@@ -7,7 +7,9 @@ from catsql.daffsql.dictify import dictify
 
 EPSILON = 0.00001
 
+
 class SqlAlchemyHelper(daff.SqlHelper):
+
     def __init__(self):
         self.updates = 0
         self.inserts = 0
@@ -35,7 +37,7 @@ class SqlAlchemyHelper(daff.SqlHelper):
                 # could be sqlite untyped
                 try:
                     if '.' in value:
-                        x = float(value)
+                        value = float(value)
                         is_float = True
                 except:
                     pass
@@ -54,9 +56,9 @@ class SqlAlchemyHelper(daff.SqlHelper):
         columns = self.getColumns(db, name)
 
         # should work doesn't work :(
-        #q = db.session.query(tab)
-        #q = q.filter_by(**conds)
-        #q = q.update(vals)
+        # q = db.session.query(tab)
+        # q = q.filter_by(**conds)
+        # q = q.update(vals)
 
         q = db.getTable(name).update()
         for key, value in conds.items():
@@ -94,7 +96,6 @@ class SqlAlchemyHelper(daff.SqlHelper):
                 if columns[key]['primary']:
                     # don't try to set blank primary keys, assume they are autoincrement
                     vals.pop(key)
-        tab = db.getTable(name)
         q = db.getTable(name).insert()
         q = q.values(vals)
         db.session.connection().execute(q)
