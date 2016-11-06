@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 import json
-from sqlalchemy import asc, Column, desc, MetaData, Table, text, types
-from sqlalchemy.exc import (ArgumentError, CompileError, OperationalError, InvalidRequestError,
-                            NoSuchColumnError, SAWarning)
+from sqlalchemy import asc, desc, text, types
+from sqlalchemy.exc import OperationalError, InvalidRequestError
 from sqlalchemy.sql import expression, functions
+
 
 def recursive_find(data, key):
     result = []
@@ -17,6 +17,7 @@ def recursive_find(data, key):
         for item in data:
             result += recursive_find(item, key)
     return result
+
 
 class Filter(object):
     def __init__(self, database, columns=None):
@@ -41,9 +42,9 @@ class Filter(object):
             for sql in sqls:
                 query['rows'] = query['rows'].filter(text(sql))
             try:
-                count = query['rows'].limit(1).all() # inefficient
+                query['rows'].limit(1).all()  # inefficient
                 active_queries.append(query)
-            except OperationalError as e:
+            except OperationalError:
                 # should cache these and show if no results at all found
                 continue
         self.queries = active_queries
@@ -56,7 +57,7 @@ class Filter(object):
             try:
                 query['rows'] = query['rows'].filter_by(**conditions)
                 active_queries.append(query)
-            except InvalidRequestError as e:
+            except InvalidRequestError:
                 continue
         self.queries = active_queries
         return self
@@ -84,12 +85,11 @@ class Filter(object):
         return self
 
     def _query(self):
-        
+
         table_items = self.database.tables_metadata.items()
 
         self.queries = []
 
-        viable_tables = []
         for table_name, table in sorted(table_items):
 
             if self.database.tables is not None:
@@ -173,7 +173,7 @@ class Filter(object):
             try:
                 table = query['table']
                 for key, val in conditions.items():
-                    if not key in table.c:
+                    if key not in table.c:
                         raise InvalidRequestError('key not present')
                     if val == "" or val[0] != '@':
                         query['rows'] = query['rows'].filter(table.c[key] == val)
@@ -184,7 +184,7 @@ class Filter(object):
                             vals = recursive_find(data, key)
                             query['rows'] = query['rows'].filter(table.c[key].in_(vals))
                 active_queries.append(query)
-            except InvalidRequestError as e:
+            except InvalidRequestError:
                 continue
         self.queries = active_queries
         return self

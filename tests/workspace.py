@@ -5,7 +5,6 @@ import re
 import six
 import shutil
 import sqlite3
-import unittest2
 
 NUMBERS_SQL = """
 BEGIN TRANSACTION;
@@ -26,6 +25,7 @@ INSERT INTO "product" VALUES(2, '..');
 INSERT INTO "product" VALUES(3, '...');
 COMMIT;
 """
+
 
 class Workspace(object):
 
@@ -79,4 +79,3 @@ class Workspace(object):
 
     def output_json(self):
         return json.loads(self.output_text())
-

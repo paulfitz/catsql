@@ -5,5 +5,12 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
-install: "pip install six unittest2; pip install -e ."
-script: nosetests -s -vv tests
+install:
+  - pip install flake8 unittest2
+  - pip install -e .
+script:
+  - nosetests -s -vv tests
+  - flake8 --ignore=E501,E123,E124,E126,E127,E128 catsql tests setup.py
+cache:
+  directories:
+    - $HOME/.cache/pip

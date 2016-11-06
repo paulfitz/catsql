@@ -1,15 +1,16 @@
 import daff
 import sqlalchemy
-from sqlalchemy import *
-from sqlalchemy.orm import create_session, mapper
-from sqlalchemy.exc import ArgumentError, OperationalError, InvalidRequestError, CompileError
+from sqlalchemy import create_engine
+from sqlalchemy.orm import create_session
+from sqlalchemy.exc import CompileError
 from sqlalchemy.ext.declarative import declarative_base
 
 from catsql.daffsql.sqlalchemy_helper import SqlAlchemyHelper
 
+
 class SqlAlchemyDatabase(daff.SqlDatabase):
 
-    def __init__(self,url):
+    def __init__(self, url):
         self.url = url
         self.Base = declarative_base()
         self.engine = create_engine(url)
@@ -32,14 +33,14 @@ class SqlAlchemyDatabase(daff.SqlDatabase):
         }
 
     # needed because pragmas do not support bound parameters
-    def getQuotedColumnName(self,name):
+    def getQuotedColumnName(self, name):
         return name  # adequate for test, not real life
 
     # needed because pragmas do not support bound parameters
-    def getQuotedTableName(self,name):
+    def getQuotedTableName(self, name):
         return name.toString()  # adequate for test, not real life
 
-    def getColumns(self,name):
+    def getColumns(self, name):
         name = name.toString()
         tab = self.Base.metadata.tables[name]
         columns = []
@@ -52,23 +53,23 @@ class SqlAlchemyDatabase(daff.SqlDatabase):
                 if isinstance(col.type, sqlalchemy.types.Float):
                     type_name = 'REAL'
                 column.setType(type_name, 'sqlalchemy')
-            except CompileError as e:
-                column.setType("",'sqlalchemy')
+            except CompileError:
+                column.setType("", 'sqlalchemy')
             columns.append(column)
         return columns
 
-    def begin(self,query,args=[],order=[]):
+    def begin(self, query, args=[], order=[]):
         print("Not implemented " + query)
         return False
 
-    def beginRow(self,tab,row,order=[]):
+    def beginRow(self, tab, row, order=[]):
         print("Not implemented")
         return False
 
     def read(self):
         return False
 
-    def get(self,index):
+    def get(self, index):
         return None
 
     def end(self):
@@ -79,6 +80,6 @@ class SqlAlchemyDatabase(daff.SqlDatabase):
 
     def getHelper(self):
         return self.helper
-    
+
     def getNameForAttachment(self):
         return None

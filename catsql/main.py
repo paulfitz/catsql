@@ -10,10 +10,8 @@ from datetime import datetime
 from io import StringIO, BytesIO
 import json
 import os
-from sqlalchemy import Column, MetaData, Table, text, types
-from sqlalchemy.exc import (ArgumentError, CompileError, OperationalError, InvalidRequestError,
-                            SAWarning)
-from sqlalchemy.sql import expression, functions
+from sqlalchemy import Column, MetaData, Table, types
+from sqlalchemy.exc import (CompileError, SAWarning)
 import sys
 import warnings
 
@@ -27,6 +25,7 @@ else:
     import csv
 
 warnings.simplefilter("ignore", category=SAWarning)
+
 
 # Get approximate length of header
 class CsvRowWriter(object):
@@ -45,13 +44,13 @@ class CsvRowWriter(object):
             self.writer.writerow(row)
         return queue.getvalue()
 
+
 class SmartFormatter(argparse.HelpFormatter):
 
     def _split_lines(self, text, width):
         if text.startswith('R|'):
             return text[2:].splitlines()
         return argparse.HelpFormatter._split_lines(self, text, width)
-
 
 
 class Viewer(object):
@@ -139,10 +138,11 @@ class Viewer(object):
             del self.values[key]
         for key, val in self.values.items():
             self.values[key] = val[0]
+            self.context_columns.add(key)
 
     def ok_column(self, name):
         if self.args.terse:
-            if name in context_columns:
+            if name in self.context_columns:
                 return False
         if self.selected_columns:
             if name not in self.selected_columns:
@@ -173,7 +173,7 @@ class Viewer(object):
         if not (self.output_in_json or self.output_in_sqlite):
             header_writer = CsvRowWriter()
 
-            header = header_writer.writerow(list(column for column in self.columns 
+            header = header_writer.writerow(list(column for column in self.columns
                                                  if self.ok_column(column)))
             print(header, file=self.output_file)
             if not self.output_in_csv:
@@ -201,11 +201,9 @@ class Viewer(object):
                 self.output_file = work_file
                 self.output_in_csv = True
                 self.args.safe_null = True
-                self.args.save_bookmark = [ os.path.join(work, 'bookmark.json') ]
+                self.args.save_bookmark = [os.path.join(work, 'bookmark.json')]
             elif self.args.output:
                 self.output_file = open(self.args.output[0], 'wt')
-
-            table_items = self.database.tables_metadata.items()
 
             viable_tables = []
 
@@ -252,7 +250,6 @@ class Viewer(object):
                             continue
                         try:
                             column = table.c[name]
-                            sql_type = column.type
                             sql_name = str(column.type)  # make sure not nulltype
                         except CompileError:
                             sql_name = None
@@ -263,7 +260,8 @@ class Viewer(object):
                     if table_name in self.target_db.tables_metadata.keys():
                         # clear previous results
                         self.target_db.tables_metadata[table_name].drop(self.target_db.engine)
-                    target = { 'table': None, 'rows': [] }
+                    target = {'table': None, 'rows': []}
+
                     def fallback_type(example):
                         if isinstance(example, bool):
                             return types.Boolean
@@ -274,6 +272,7 @@ class Viewer(object):
                         elif isinstance(example, datetime):
                             return types.DateTime
                         return types.UnicodeText
+
                     def create_table(data):
                         if target['table'] is not None:
                             return
@@ -375,8 +374,8 @@ class Viewer(object):
                     editor = os.environ.get('EDITOR', 'nano')
                 call([editor, edit_filename])
                 call(['patchsql', self.url] +
-                     ['--table'] + self.tables_so_far + 
-                     ['--follow', output_filename, edit_filename] + 
+                     ['--table'] + self.tables_so_far +
+                     ['--follow', output_filename, edit_filename] +
                      ['--safe-null'])
 
         finally:
@@ -398,7 +397,6 @@ class Viewer(object):
                 import shutil
                 shutil.rmtree(work)
                 work = None
-
 
     def save_as_json(self, table, rows, filename):
         result = OrderedDict()
@@ -422,6 +420,7 @@ class Viewer(object):
         result['count'] = len(results)
         with open(filename, 'w') as fout:
             fout.write(json.dumps(result, indent=2))
+
 
 def catsql(sys_args):
 

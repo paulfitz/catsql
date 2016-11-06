@@ -1,16 +1,8 @@
-import argparse
 from catsql.main import catsql
-from catsql.cmdline import add_options
-import csv
-import json
-import os
-import re
-import six
-import shutil
-import sqlite3
 import unittest2
 
 from tests.workspace import Workspace
+
 
 class TestCommands(unittest2.TestCase):
 
@@ -59,12 +51,13 @@ class TestCommands(unittest2.TestCase):
         assert result['count'] == 5
 
     def test_json_filtered(self):
-        catsql([self.workspace.number_db, "--column", "DIGIT",  "--json", self.workspace.output_file])
+        catsql([self.workspace.number_db, "--column", "DIGIT",
+                "--json", self.workspace.output_file])
         result = self.workspace.output_json()
         assert result['count'] == 5
 
     def test_types(self):
-        catsql([self.workspace.number_db, "--types",  "--json", self.workspace.output_file])
+        catsql([self.workspace.number_db, "--types", "--json", self.workspace.output_file])
         result = self.workspace.output_json()
         assert result['results'][0]['DIGIT'] == 'INTEGER'
 
@@ -74,3 +67,20 @@ class TestCommands(unittest2.TestCase):
         result = self.workspace.output_json()
         assert result['count'] == 5
 
+    def test_terse_kv(self):
+        catsql([self.workspace.number_db, "--terse",
+                "--value", "DIGIT=4",
+                "--json", self.workspace.output_file])
+        result = self.workspace.output_json()
+        assert result['count'] == 1
+        assert 'NAME' in result['results'][0]
+        assert 'DIGIT' not in result['results'][0]
+
+    def test_terse_direct(self):
+        catsql([self.workspace.number_db, "--terse",
+                "--DIGIT", "4",
+                "--json", self.workspace.output_file])
+        result = self.workspace.output_json()
+        assert result['count'] == 1
+        assert 'NAME' in result['results'][0]
+        assert 'DIGIT' not in result['results'][0]
