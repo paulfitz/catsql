@@ -18,6 +18,7 @@ import warnings
 from catsql import cmdline
 from catsql.database import Database
 from catsql.nullify import Nullify
+from catsql.patch import patchsql
 
 if sys.version_info[0] == 2:
     import unicodecsv as csv
@@ -373,10 +374,9 @@ class Viewer(object):
                 if not editor:
                     editor = os.environ.get('EDITOR', 'nano')
                 call([editor, edit_filename])
-                call(['patchsql', self.url] +
-                     ['--table'] + self.tables_so_far +
-                     ['--follow', output_filename, edit_filename] +
-                     ['--safe-null'])
+                patchsql([self.url, '--table'] + self.tables_so_far +
+                         ['--follow', output_filename, edit_filename,
+                            '--safe-null'])
 
         finally:
             if self.failure:

@@ -28,25 +28,27 @@ def fix_nulls(table, active):
             row[i] = nullify.decode_null(row[i])
 
 
-def main():
+def patchsql(sys_args):
 
     parser = argparse.ArgumentParser(description='Patch a database.')
 
     parser.add_argument('url', help='Sqlalchemy-compatible database url')
 
     parser.add_argument('--patch', nargs=1, required=False, default=None,
-                        help='csv patch file from daff')
+                        help="A csv file describing the patch. In the "
+                        "format output by daff.")
 
     parser.add_argument('--follow', nargs=2, required=False, default=None,
-                        help='two csv files to compare, patch from their diff')
+                        help="An alternative to --patch option.  Specify"
+                        "two csv files to compare, and patch from their diff.")
 
     parser.add_argument('--table', nargs=1, required=True, default=None,
-                        help='Table to patch')
+                        help='Table to which patch should be applied.')
 
     parser.add_argument('--safe-null', required=False, action='store_true',
-                        help='Decode nulls in a reversible way')
+                        help='Decode nulls in a reversible way.')
 
-    args = parser.parse_args()
+    args = parser.parse_args(sys_args)
 
     url = args.url
     tables = args.table
@@ -72,11 +74,19 @@ def main():
         ansi_patch = daff.Coopy.diffAsAnsi(table0, table1)
         print(ansi_patch, file=sys.stderr, end='')
 
+    if not patch:
+        raise KeyError('please specify either --patch or --follow')
+
     daff_patch = daff.HighlightPatch(st, patch)
     daff_patch.apply()
     if db.events['skips'] != 0:
         print(" * {}".format(json.dumps(db.events),
                              file=sys.stderr))
+
+
+def main():
+    patchsql(sys.argv[1:])
+
 
 if __name__ == "__main__":
     main()
