@@ -10,8 +10,10 @@ from datetime import datetime
 from io import StringIO, BytesIO
 import json
 import os
+from shutil import copyfile
 from sqlalchemy import Column, MetaData, Table, types
 from sqlalchemy.exc import (CompileError, SAWarning)
+from subprocess import call
 import sys
 import warnings
 
@@ -366,17 +368,16 @@ class Viewer(object):
             if self.args.edit and not self.failure:
                 work_file.close()
                 work_file = None
-                from shutil import copyfile
                 edit_filename = os.path.join(work, 'variant.csv')
                 copyfile(output_filename, edit_filename)
-                from subprocess import call
                 editor = os.environ.get('TABLE_EDITOR', None)
                 if not editor:
                     editor = os.environ.get('EDITOR', 'nano')
                 call([editor, edit_filename])
                 patchsql([self.url, '--table'] + self.tables_so_far +
                          ['--follow', output_filename, edit_filename,
-                            '--safe-null'])
+                            '--safe-null'] +
+                            (['--quiet'] if self.args.quiet else []))
 
         finally:
             if self.failure:

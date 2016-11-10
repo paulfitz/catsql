@@ -48,6 +48,9 @@ def patchsql(sys_args):
     parser.add_argument('--safe-null', required=False, action='store_true',
                         help='Decode nulls in a reversible way.')
 
+    parser.add_argument('--quiet', required=False, action='store_true',
+                       help='Do not show computed diff.')
+
     args = parser.parse_args(sys_args)
 
     url = args.url
@@ -72,7 +75,8 @@ def patchsql(sys_args):
             fix_nulls(table1, args.safe_null)
         patch = daff.Coopy.diff(table0, table1)
         ansi_patch = daff.Coopy.diffAsAnsi(table0, table1)
-        print(ansi_patch, file=sys.stderr, end='')
+        if not args.quiet:
+            print(ansi_patch, file=sys.stderr, end='')
 
     if not patch:
         raise KeyError('please specify either --patch or --follow')

@@ -37,6 +37,13 @@ def add_options(parser):
     parser.add_argument('--load-bookmark', required=False, action='store_true',
                         help='Load a set of filters from a file.')
 
+    parser.add_argument('--order', action='append',
+                        help='Columns to order by. '
+                        'Can be a comma separated list of columns names. '
+                        'Add + or - to end of name to specify ascending or descending '
+                        'order.  Specify "none" to disable ordering completely '
+                        '(by default we always try to apply some order)')
+
     parser.add_argument('--output', nargs=1, required=False, default=None,
                         help='Save output to specified file.  Incompatible with --edit.')
 
@@ -78,9 +85,5 @@ def add_options(parser):
     parser.add_argument('--verbose', default=False, action='store_true',
                         help='Show raw SQL queries as they are made.')
 
-    parser.add_argument('--order', action='append',
-                        help='Columns to order by. '
-                        'Can be a comma separated list of columns names. '
-                        'Add + or - to end of name to specify ascending or descending '
-                        'order.  Specify "none" to disable ordering completely '
-                        '(by default we always try to apply some order)')
+    parser.add_argument('--quiet', default=False, action='store_true',
+                        help='Omit any optional output to console.')

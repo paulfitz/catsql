@@ -33,5 +33,11 @@ setup(name="catsql",
               "mysql-python"
           ]
       },
+      tests_require=[
+          'mock',
+          'nose',
+          'unittest2'
+      ],
+      test_suite="nose.collector",
       url="https://github.com/paulfitz/catsql"
 )
