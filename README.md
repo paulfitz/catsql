@@ -39,6 +39,12 @@ look in, but on smaller databases it is convenient to let `catsql`
 figure that out.  Tables without a column called `color` will be
 omitted from search.
 
+`catsql $DATABASE_URL --color green --sqlite slice.sqlite`
+
+Save rows with `color` equal to `green` in a local SQLite database.
+Any tables without a `color` column are ignored.  Handy for doing
+follow-on SQL analysis offline.
+
 `catsql $DATABASE_URL --grep paul`
 
 Search for `paul` across the entire database. Search is done on the
