@@ -67,6 +67,11 @@ class TestCommands(unittest2.TestCase):
         result = self.workspace.output_json()
         assert result['count'] == 5
 
+    def test_excel_basic(self):
+        catsql([self.workspace.number_db, "--excel", self.workspace.output_file_excel])
+        result = self.workspace.output_excel()
+        assert len(list(result.active)) == 5 + 1
+
     def test_terse_kv(self):
         catsql([self.workspace.number_db, "--terse",
                 "--value", "DIGIT=4",
