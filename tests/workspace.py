@@ -1,5 +1,6 @@
 import csv
 import json
+import openpyxl
 import os
 import re
 import six
@@ -47,6 +48,7 @@ class Workspace(object):
         self.number_db = 'sqlite:///{}'.format(self.number_file)
         self.output_file = "{}/output.txt".format(self.work)
         self.output_file_sql = "{}/output.sqlite".format(self.work)
+        self.output_file_excel = "{}/output.xlsx".format(self.work)
         self.output_text_cache = None
 
     def filename(self, partial_filename):
@@ -79,3 +81,6 @@ class Workspace(object):
 
     def output_json(self):
         return json.loads(self.output_text())
+
+    def output_excel(self):
+        return openpyxl.load_workbook(filename=self.output_file_excel)

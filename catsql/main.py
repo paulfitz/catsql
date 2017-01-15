@@ -9,6 +9,8 @@ from collections import OrderedDict
 from datetime import datetime
 from io import StringIO, BytesIO
 import json
+import openpyxl
+import openpyxl.styles
 import os
 from shutil import copyfile
 from sqlalchemy import Column, MetaData, Table, types
@@ -98,10 +100,15 @@ class Viewer(object):
         self.output_in_csv = args.csv
         self.output_in_json = args.json
         self.output_in_sqlite = args.sqlite
+        self.output_in_excel = args.excel
 
         self.target_db = None
         if self.output_in_sqlite:
             self.target_db = Database(self.output_in_sqlite[0], can_create=True)
+        self.target_ss = None
+        if self.output_in_excel:
+            self.target_ss = openpyxl.Workbook()
+            self.target_ss.remove_sheet(self.target_ss.active)
 
         if args.value is not None:
             for context in args.value:
@@ -165,15 +172,17 @@ class Viewer(object):
             return True
         self.header_considered = True
         if len(self.tables_so_far) > 0:
-            if self.output_in_csv or self.output_in_json or self.output_in_sqlite:
+            if (self.output_in_csv or self.output_in_json or self.output_in_sqlite or
+                  self.output_in_excel):
                 if not self.output_in_sqlite:
                     self.failure = True
                 self.tables_so_far.append(self.table_name)
                 return False
             print("", file=self.output_file)
-        if not (self.output_in_csv or self.output_in_json or self.output_in_sqlite):
+        if not (self.output_in_csv or self.output_in_json or self.output_in_sqlite or
+                self.output_in_excel):
             print('== {} =='.format(self.table_name), file=self.output_file)
-        if not (self.output_in_json or self.output_in_sqlite):
+        if not (self.output_in_json or self.output_in_sqlite or self.output_in_excel):
             header_writer = CsvRowWriter()
 
             header = header_writer.writerow(list(column for column in self.columns
@@ -259,6 +268,21 @@ class Viewer(object):
                         column_types.append(sql_name)
                     rows = [column_types]
 
+                if self.target_ss:
+                    ws = self.target_ss.create_sheet()
+                    ws.title = table_name
+                    ws.append(column for column in self.columns
+                                if self.ok_column(column))
+                    for row in rows:
+                        ws.append(cell for c, cell in enumerate(row)
+                                if self.ok_column(self.columns[c]))
+                    s = openpyxl.styles.NamedStyle(name="Header",
+                                                   font=openpyxl.styles.Font(bold=True))
+                    for cell in next(ws.rows):
+                        cell.style = s
+                    for column_cells in ws.columns:
+                        ws.column_dimensions[column_cells[0].column].auto_size = True
+
                 if self.target_db:
                     if table_name in self.target_db.tables_metadata.keys():
                         # clear previous results
@@ -320,7 +344,7 @@ class Viewer(object):
                     create_table({})
                     add_row(None)
 
-                if self.output_in_json or self.output_in_sqlite:
+                if self.output_in_json or self.output_in_sqlite or self.output_in_excel:
                     if not self.show_header_on_need():
                         continue
                     if self.output_in_json:
@@ -388,6 +412,8 @@ class Viewer(object):
                     print("  --table {}".format(name),
                           file=sys.stderr)
 
+            if self.target_ss:
+                self.target_ss.save(self.output_in_excel[0])
             if work:
                 if work_file:
                     try:
