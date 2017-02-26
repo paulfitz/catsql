@@ -4,14 +4,14 @@ catsql
 ======
 
 A `cat` for SQL databases. Show slices of a database in your console.  Save them
-as `.csv`, `.json`, or `.sqlite` files.
+as `.csv`, `.json`, `.sqlite`, or `.xlsx` files.
 
 Databases are read using SQLAlchemy.  They are specified using [database
 urls](http://docs.sqlalchemy.org/en/rel_1_0/core/engines.html#database-urls).
 Local `.sqlite` databases may be specified with their filename directly.
 
-Also has a `--edit` option that will show the ouput in your default editor.
-If you make any changes, they will be applied back to the original source.
+Also has a `--edit` option that will show the ouput in your default text
+editor. If you make any changes, they will be applied back to the original source.
 
 ![catsql](https://cloud.githubusercontent.com/assets/118367/19671892/166193f0-9a40-11e6-9824-7c4a2c8ed5fd.jpg)
 
@@ -44,6 +44,11 @@ omitted from search.
 Save rows with `color` equal to `green` in a local SQLite database.
 Any tables without a `color` column are ignored.  Handy for doing
 follow-on SQL analysis offline.
+
+`catsql $DATABASE_URL --color green --excel slice.xlsx`
+
+Save rows with `color` equal to `green` in a local Excel-compatible
+spreadsheet.
 
 `catsql $DATABASE_URL --grep paul`
 
@@ -135,6 +140,7 @@ optional arguments:
   --distinct            Show distinct rows only, hiding duplicates.
   --edit                Edit original table in your favorite editor. Respects
                         $EDITOR environment variable.
+  --excel EXCEL         Save results to an excel file.
   --grep GREP           Search cells for occurrence of a text fragment.
                         Translated to SQL query, performed by database.
   --json JSON           Save results to a json file. Only one table allowed.

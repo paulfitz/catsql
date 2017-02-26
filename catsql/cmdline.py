@@ -24,6 +24,9 @@ def add_options(parser):
                         help='Edit original table in your favorite editor. '
                         'Respects $EDITOR environment variable.')
 
+    parser.add_argument('--excel', nargs=1, required=False, default=None,
+                        help='Save results to an excel file.')
+
     parser.add_argument('--grep', action='append',
                         help='Search cells for occurrence of a text fragment. '
                         'Translated to SQL query, performed by database.')
@@ -65,9 +68,6 @@ def add_options(parser):
 
     parser.add_argument('--sqlite', nargs=1, required=False, default=None,
                         help='Save results to a sqlite file.')
-
-    parser.add_argument('--excel', nargs=1, required=False, default=None,
-                        help='Save results to an excel file.')
 
     parser.add_argument('--table', action='append',
                         help='Table to include (defaults to all tables). '
