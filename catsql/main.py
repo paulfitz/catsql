@@ -129,7 +129,12 @@ class Viewer(object):
         if len(remainder) == 0:
             return
         for table in self.database.tables_metadata.values():
-            column_names |= set(table.columns.keys())
+            keys = None
+            if hasattr(table, 'columns'):
+                keys = table.columns.keys()
+            else:
+                keys = table.keys
+            column_names |= set(keys)
         if 'catsql_database_url' in column_names:
             column_names.remove('catsql_database_url')
         parser = argparse.ArgumentParser()
@@ -252,7 +257,12 @@ class Viewer(object):
                 rows = t['rows']
 
                 self.header_shown = False
-                self.start_table(table_name, table.columns.keys())
+                keys = None
+                if hasattr(table, 'columns'):
+                    keys = table.columns.keys()
+                else:
+                    keys = table.keys
+                self.start_table(table_name, keys)
                 viable_tables.append(table_name)
 
                 if self.args.types:
