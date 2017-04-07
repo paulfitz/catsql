@@ -32,6 +32,13 @@ else:
 warnings.simplefilter("ignore", category=SAWarning)
 
 
+def flatten_date(obj):
+    if isinstance(obj, datetime):
+        serial = obj.isoformat()
+        return serial
+    raise TypeError("No change needed")
+
+
 # Get approximate length of header
 class CsvRowWriter(object):
     def __init__(self):
@@ -455,8 +462,11 @@ class Viewer(object):
                 od[names[i]] = row[idx]
             results.append(od)
         result['count'] = len(results)
+
         with open(filename, 'w') as fout:
-            fout.write(json.dumps(result, indent=2))
+            fout.write(json.dumps(result,
+                                  indent=2,
+                                  default=flatten_date))
 
 
 def catsql(sys_args):
