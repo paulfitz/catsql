@@ -10,7 +10,7 @@ Databases are read using SQLAlchemy.  They are specified using [database
 urls](http://docs.sqlalchemy.org/en/rel_1_0/core/engines.html#database-urls).
 Local `.sqlite` databases may be specified with their filename directly.
 
-Also has a `--edit` option that will show the ouput in your default text
+Also has an `--edit` option that will show the output in your default text
 editor. If you make any changes, they will be applied back to the original source.
 
 ![catsql](https://cloud.githubusercontent.com/assets/118367/19671892/166193f0-9a40-11e6-9824-7c4a2c8ed5fd.jpg)
