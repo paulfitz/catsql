@@ -371,18 +371,16 @@ class Viewer(object):
                     # for good reasons that unfortunately there isn't space to describe
                     # here on the back of this envelope
                     csv_writer = csv.writer(self.output_file, lineterminator='\n')
+                    if not self.show_header_on_need():
+                        continue
                     if self.args.safe_null:
                         nullify = Nullify()
                         for row in rows:
-                            if not self.show_header_on_need():
-                                continue
                             csv_writer.writerow(list(nullify.encode_null(cell)
                                                      for c, cell in enumerate(row)
                                                      if self.ok_column(self.columns[c])))
                     else:
                         for row in rows:
-                            if not self.show_header_on_need():
-                                continue
                             csv_writer.writerow(list(cell for c, cell in enumerate(row)
                                                      if self.ok_column(self.columns[c])))
                     del csv_writer
@@ -489,6 +487,13 @@ def main():
             pass
         else:
             raise
+
+
+def edit(editor):
+    args = sys.argv[1:]
+    args += ['--edit']
+    os.environ['TABLE_EDITOR'] = editor
+    catsql(args)
 
 
 if __name__ == "__main__":
