@@ -66,17 +66,15 @@ class Database(object):
         engine = create_engine('sqlite://')
         self.csv = url
         with open(url) as f:
-            table = None
             metadata = MetaData(bind=engine)
             cf = csv.DictReader(f, delimiter=',')
+            table = Table('_table_', metadata,
+                          Column('_id_', Integer,
+                                 primary_key=True),
+                          *(Column(rowname, String())
+                            for rowname in cf.fieldnames))
+            table.create()
             for row in cf:
-                if table is None:
-                    table = Table('_table_', metadata,
-                                  Column('_id_', Integer,
-                                         primary_key=True),
-                                  *(Column(rowname, String())
-                                    for rowname in row.keys()))
-                    table.create()
                 table.insert().values(**row).execute()
 
             class CsvTable(object):
