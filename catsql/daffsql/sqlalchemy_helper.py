@@ -39,7 +39,7 @@ class SqlAlchemyHelper(daff.SqlHelper):
                     if '.' in value:
                         value = float(value)
                         is_float = True
-                except:
+                except Exception:
                     pass
         if is_float:
             # use epsilon

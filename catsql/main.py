@@ -434,7 +434,7 @@ class Viewer(object):
                 if work_file:
                     try:
                         work_file.close()
-                    except:
+                    except Exception:
                         pass
                     work_file = None
                 import shutil
