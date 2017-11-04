@@ -14,7 +14,7 @@ if sys.version_info[0] == 2:
     install_requires.append('unicodecsv')
 
 setup(name="catsql",
-      version="0.4.1",
+      version="0.4.2",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display a quick view of sql databases (and make quick edits)",
@@ -36,8 +36,7 @@ setup(name="catsql",
       },
       tests_require=[
           'mock',
-          'nose',
-          'unittest2'
+          'nose'
       ],
       test_suite="nose.collector",
       url="https://github.com/paulfitz/catsql"

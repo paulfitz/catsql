@@ -1,7 +1,7 @@
 from catsql.main import catsql
 from catsql.patch import patchsql
 import mock
-import unittest2
+import unittest
 
 from tests.workspace import Workspace
 
@@ -16,7 +16,7 @@ def editor_call(args):
         fout.write(txt)
 
 
-class TestPatch(unittest2.TestCase):
+class TestPatch(unittest.TestCase):
 
     def setUp(self):
         self.workspace = Workspace(__file__)

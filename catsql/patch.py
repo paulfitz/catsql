@@ -28,7 +28,7 @@ def fix_nulls(table, active):
             row[i] = nullify.decode_null(row[i])
 
 
-def patchsql(sys_args):
+def patchsql(sys_args, database=None):
 
     parser = argparse.ArgumentParser(description='Patch a database.')
 
@@ -56,7 +56,11 @@ def patchsql(sys_args):
     url = args.url
     tables = args.table
 
-    db = SqlAlchemyDatabase(url)
+    if database:
+        db = SqlAlchemyDatabase(database)
+    else:
+        db = SqlAlchemyDatabase(url)
+
     st = daff.SqlTable(db, daff.SqlTableName(tables[0]))
 
     patch = None
@@ -86,6 +90,7 @@ def patchsql(sys_args):
     if db.events['skips'] != 0:
         print(" * {}".format(json.dumps(db.events),
                              file=sys.stderr))
+    db.finalize()
 
 
 def main():

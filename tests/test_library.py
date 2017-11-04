@@ -2,12 +2,12 @@ from __future__ import unicode_literals
 
 import catsql
 import json
-import unittest2
+import unittest
 
 from tests.workspace import Workspace
 
 
-class TestLibrary(unittest2.TestCase):
+class TestLibrary(unittest.TestCase):
 
     def setUp(self):
         self.workspace = Workspace(__file__)

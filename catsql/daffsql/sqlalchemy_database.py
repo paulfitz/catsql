@@ -5,18 +5,35 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.exc import CompileError
 from sqlalchemy.ext.declarative import declarative_base
 
+from catsql.database import Database
 from catsql.daffsql.sqlalchemy_helper import SqlAlchemyHelper
 
 
 class SqlAlchemyDatabase(daff.SqlDatabase):
 
     def __init__(self, url):
-        self.url = url
-        self.Base = declarative_base()
-        self.engine = create_engine(url)
-        self.Base.metadata.reflect(self.engine)
-        self.session = create_session(bind=self.engine)
+        if isinstance(url, Database):
+            db = url
+            self.database = db
+            self.url = db.url
+            self.Base = db.Base
+            self.engine = db.engine
+            self.session = db._session
+        else:
+            self.database = None
+            self.url = url
+            self.Base = declarative_base()
+            self.engine = create_engine(url)
+            self.Base.metadata.reflect(self.engine)
+            self.session = create_session(bind=self.engine)
         self.helper = SqlAlchemyHelper()
+
+    def finalize(self):
+        if self.database:
+            changes = (self.helper.updates +
+                       self.helper.inserts +
+                       self.helper.deletes)
+            self.database.finalize(changes > 0)
 
     def getTable(self, name):
         self.getColumns(name)

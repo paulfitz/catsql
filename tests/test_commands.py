@@ -1,10 +1,10 @@
 from catsql.main import catsql
-import unittest2
+import unittest
 
 from tests.workspace import Workspace
 
 
-class TestCommands(unittest2.TestCase):
+class TestCommands(unittest.TestCase):
 
     def setUp(self):
         self.workspace = Workspace(__file__)

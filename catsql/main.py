@@ -416,7 +416,8 @@ class Viewer(object):
                 patchsql([self.url, '--table'] + self.tables_so_far +
                          ['--follow', output_filename, edit_filename,
                             '--safe-null'] +
-                            (['--quiet'] if self.args.quiet else []))
+                            (['--quiet'] if self.args.quiet else []),
+                         database=self.database)
 
         finally:
             if self.failure:
