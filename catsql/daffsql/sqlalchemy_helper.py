@@ -41,7 +41,7 @@ class SqlAlchemyHelper(daff.SqlHelper):
                         is_float = True
                 except Exception:
                     pass
-        if is_float:
+        if is_float and value is not None:
             # use epsilon
             q = q.where(tab.c[key] > float(value) - EPSILON)
             q = q.where(tab.c[key] < float(value) + EPSILON)
