@@ -84,6 +84,7 @@ class Viewer(object):
     def setup_filters(self, args):
         self.url = args.catsql_database_url
         self.tables = self.decomma(args.table)
+        self.schema = args.schema
         self.selected_columns = self.decomma(args.column)
         self.ordering = self.decomma(args.order)
 
@@ -127,7 +128,7 @@ class Viewer(object):
                     self.context_columns.add(context)
 
     def connect_database(self):
-        database = Database(self.url, verbose=self.args.verbose, tables=self.tables)
+        database = Database(self.url, verbose=self.args.verbose, tables=self.tables, schema=self.schema)
         self.database = database
         self.url = self.args.catsql_database_url = database.full_url
 
@@ -416,7 +417,8 @@ class Viewer(object):
                 patchsql([self.url, '--table'] + self.tables_so_far +
                          ['--follow', output_filename, edit_filename,
                             '--safe-null'] +
-                            (['--quiet'] if self.args.quiet else []),
+                            (['--quiet'] if self.args.quiet else []) +
+                            (['--schema', self.schema] if self.schema else []),
                          database=self.database)
 
         finally:
