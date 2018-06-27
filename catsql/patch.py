@@ -45,6 +45,9 @@ def patchsql(sys_args, database=None):
     parser.add_argument('--table', nargs=1, required=True, default=None,
                         help='Table to which patch should be applied.')
 
+    parser.add_argument('--schema', required=False, default=None,
+                        help="Database schema to use (default: public).")
+
     parser.add_argument('--safe-null', required=False, action='store_true',
                         help='Decode nulls in a reversible way.')
 
@@ -54,14 +57,14 @@ def patchsql(sys_args, database=None):
     args = parser.parse_args(sys_args)
 
     url = args.url
-    tables = args.table
+    table = args.schema + '.' + args.table[0] if args.schema else args.table[0]
 
     if database:
         db = SqlAlchemyDatabase(database)
     else:
         db = SqlAlchemyDatabase(url)
 
-    st = daff.SqlTable(db, daff.SqlTableName(tables[0]))
+    st = daff.SqlTable(db, daff.SqlTableName(table))
 
     patch = None
 

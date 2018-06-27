@@ -73,6 +73,9 @@ def add_options(parser):
                         help='Table to include (defaults to all tables). '
                         'Can be a comma separated list of multiple tables.')
 
+    parser.add_argument('--schema', required=False, default=None,
+                        help="Database schema to use (default: public).")
+
     parser.add_argument('--terse', default=False, action='store_true',
                         help='Hide any columns with predetermined values.')
 

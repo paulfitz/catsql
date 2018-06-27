@@ -92,6 +92,11 @@ class Filter(object):
 
         for table_name, table in sorted(table_items):
 
+            if self.database.schema:
+                schema = self.database.schema + '.'
+                if table_name.startswith(schema):
+                    table_name = table_name[len(schema):]
+
             if self.database.tables is not None:
                 if table_name not in self.database.tables:
                     continue

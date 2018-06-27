@@ -14,11 +14,12 @@ else:
 
 
 class Database(object):
-    def __init__(self, url, verbose=False, tables=None, can_create=False):
+    def __init__(self, url, verbose=False, tables=None, schema=None, can_create=False):
         self.url = url
         self._full_url = self.url
         self.verbose = verbose
         self.tables = tables
+        self.schema = schema
         self.can_create = can_create
         self.csv = None
         self.table = None
@@ -34,7 +35,10 @@ class Database(object):
         self.save_csv(self.csv)
 
     def connect_database(self):
-        self.Base = declarative_base()
+        meta = MetaData()
+        if self.schema:
+            meta.schema = self.schema
+        self.Base = declarative_base(metadata=meta)
         if '://' not in self.url and self.url.lower().endswith('.csv'):
             # special case for csv file - just load into memory
             self.engine = self.wrap_csv(self.url)
