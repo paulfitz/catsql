@@ -335,6 +335,7 @@ class Viewer(object):
                             if sql_type is None or isinstance(sql_type, types.NullType):
                                 example = data.get(name)
                                 sql_type = fallback_type(example)
+                            sql_type.collation = None  # ignore collation
                             columns.append(Column(name, sql_type,
                                                   primary_key=column.primary_key))
                         metadata = MetaData(bind=self.target_db.engine)
