@@ -10,7 +10,7 @@ install:
   - pip install -e .
 script:
   - nosetests -s -vv tests
-  - flake8 --ignore=E501,E123,E124,E126,E127,E128 catsql tests setup.py
+  - flake8 --ignore=E501,E123,E124,E126,E127,E128,W504 catsql tests setup.py
 cache:
   directories:
     - $HOME/.cache/pip
