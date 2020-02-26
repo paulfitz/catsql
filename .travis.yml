@@ -1,16 +1,17 @@
 language: python
 python:
   - "2.7"
-  - "3.3"
-  - "3.4"
   - "3.5"
   - "3.6"
+  - "3.7"
+  - "3.8"
+  - "nightly"
 install:
   - pip install flake8 mock unittest2
   - pip install -e .
 script:
   - nosetests -s -vv tests
-  - flake8 --ignore=E501,E123,E124,E126,E127,E128 catsql tests setup.py
+  - flake8 --ignore=E501,E123,E124,E126,E127,E128,W504 catsql tests setup.py
 cache:
   directories:
     - $HOME/.cache/pip

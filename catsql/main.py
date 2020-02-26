@@ -299,7 +299,7 @@ class Viewer(object):
                     for cell in next(ws.rows):
                         cell.style = s
                     for column_cells in ws.columns:
-                        ws.column_dimensions[column_cells[0].column].auto_size = True
+                        ws.column_dimensions[column_cells[0].column_letter].auto_size = True
 
                 if self.target_db:
                     if table_name in self.target_db.tables_metadata.keys():
@@ -335,6 +335,7 @@ class Viewer(object):
                             if sql_type is None or isinstance(sql_type, types.NullType):
                                 example = data.get(name)
                                 sql_type = fallback_type(example)
+                            sql_type.collation = None  # ignore collation
                             columns.append(Column(name, sql_type,
                                                   primary_key=column.primary_key))
                         metadata = MetaData(bind=self.target_db.engine)
