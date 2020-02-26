@@ -9,6 +9,10 @@ def dictify(h):
 
     result = {}
     for key in next2yield(h.keys()):
-        result[key] = h.get(key)
+        if hasattr(h, 'h'):
+            # haxe version change
+            result[key] = h.h.get(key)
+        else:
+            result[key] = h.get(key)
 
     return result

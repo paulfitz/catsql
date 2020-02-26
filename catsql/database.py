@@ -72,18 +72,20 @@ class Database(object):
         with open(url) as f:
             metadata = MetaData(bind=engine)
             cf = csv.DictReader(f, delimiter=',')
-            table = Table('_table_', metadata,
-                          Column('_id_', Integer,
-                                 primary_key=True),
-                          *(Column(rowname, String())
-                            for rowname in cf.fieldnames))
+            names = dict([(name, name or ('col%d' % i)) for i, name in enumerate(cf.fieldnames)])
+            # if '_id_' not in cf.fieldnames:
+            #    cols = cols + [Column('_id_', Integer, primary_key=True)]
+            cols = [Column(names[rowname], String(), primary_key=(rowname == 'id'))
+                    for rowname in cf.fieldnames]
+            table = Table('_table_', metadata, *cols)
             table.create()
             for row in cf:
+                row = dict((names[name], val) for name, val in row.items())
                 table.insert().values(**row).execute()
 
             class CsvTable(object):
                 pass
-            mapper(CsvTable, table)
+            mapper(CsvTable, table, primary_key=[Column('ROWID', Integer)])
             self.table = table
         return engine
 
@@ -93,7 +95,7 @@ class Database(object):
         with open(fname, 'wb') as fout:
             writer = csv.writer(fout)
             writer.writerow([c.name for c in self.table.columns][1:])
-            for row in self.table.select().order_by(self.table.c['_id_']).execute():
+            for row in self.table.select().order_by('ROWID').execute():
                 writer.writerow(row[1:])
 
     @property

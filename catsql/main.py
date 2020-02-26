@@ -299,7 +299,7 @@ class Viewer(object):
                     for cell in next(ws.rows):
                         cell.style = s
                     for column_cells in ws.columns:
-                        ws.column_dimensions[column_cells[0].column].auto_size = True
+                        ws.column_dimensions[column_cells[0].column_letter].auto_size = True
 
                 if self.target_db:
                     if table_name in self.target_db.tables_metadata.keys():
