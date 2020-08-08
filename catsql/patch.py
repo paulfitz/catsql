@@ -91,8 +91,8 @@ def patchsql(sys_args, database=None):
     daff_patch = daff.HighlightPatch(st, patch)
     daff_patch.apply()
     if db.events['skips'] != 0:
-        print(" * {}".format(json.dumps(db.events),
-                             file=sys.stderr))
+        print(" * {}".format(json.dumps(db.events)),
+              file=sys.stderr)
     db.finalize()
 
 

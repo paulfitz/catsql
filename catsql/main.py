@@ -78,7 +78,7 @@ class Viewer(object):
     def decomma(self, lst):
         if not lst:
             return lst
-        lst = [l.split(',') for l in lst]
+        lst = [item.split(',') for item in lst]
         return [item for sublist in lst for item in sublist]
 
     def setup_filters(self, args):
