@@ -73,19 +73,22 @@ class Database(object):
             metadata = MetaData(bind=engine)
             cf = csv.DictReader(f, delimiter=',')
             names = dict([(name, name or ('col%d' % i)) for i, name in enumerate(cf.fieldnames)])
-            # if '_id_' not in cf.fieldnames:
-            #    cols = cols + [Column('_id_', Integer, primary_key=True)]
             cols = [Column(names[rowname], String(), primary_key=(rowname == 'id'))
                     for rowname in cf.fieldnames]
+            has_primary_key = any((rowname == 'id') for rowname in cf.fieldnames)
+            if not has_primary_key:
+                cols = [Column('id', Integer(), primary_key=True)] + cols
             table = Table('_table_', metadata, *cols)
             table.create()
-            for row in cf:
+            for idx, row in enumerate(cf):
                 row = dict((names[name], val) for name, val in row.items())
+                if not has_primary_key:
+                    row['id'] = idx + 1
                 table.insert().values(**row).execute()
 
             class CsvTable(object):
                 pass
-            mapper(CsvTable, table, primary_key=[Column('ROWID', Integer)])
+            mapper(CsvTable, table)
             self.table = table
         return engine
 
