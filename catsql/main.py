@@ -346,7 +346,8 @@ class Viewer(object):
                         if data:
                             target['rows'].append(data)
                         if len(target['rows']) > 10000 or not data:
-                            target['table'].insert().execute(target['rows'])
+                            if len(target['rows']) > 0:
+                                target['table'].insert().execute(target['rows'])
                             target['rows'] = []
 
                     def sqlited(data):
