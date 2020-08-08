@@ -147,7 +147,10 @@ class Filter(object):
             elif len(primary_key) >= 1:
                 query['rows'] = query['rows'].order_by(*primary_key)
             elif len(table.c) >= 1:
-                query['rows'] = query['rows'].order_by(*table.c)
+                # exclude JSON fields which may not have an obvious default ordering.
+                cols = [c for c in table.c if str(c.type) not in ['JSON', 'JSONB']]
+                if len(cols) >= 1:
+                    query['rows'] = query['rows'].order_by(*cols)
         return self
 
     def order(self, ordering=None):
