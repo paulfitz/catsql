@@ -1,7 +1,9 @@
 from catsql.filter import Filter
+import decimal
 import os
+import re
 from shutil import copyfile
-from sqlalchemy import Column, create_engine, Integer, MetaData, String, Table
+from sqlalchemy import Column, create_engine, Float, Integer, MetaData, String, Table
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import create_session, mapper
@@ -11,7 +13,6 @@ if sys.version_info[0] == 2:
     import unicodecsv as csv
 else:
     import csv
-
 
 class Database(object):
     def __init__(self, url, verbose=False, tables=None, schema=None, can_create=False):
@@ -69,28 +70,78 @@ class Database(object):
     def wrap_csv(self, url):
         engine = create_engine('sqlite://')
         self.csv = url
-        with open(url) as f:
-            metadata = MetaData(bind=engine)
-            cf = csv.DictReader(f, delimiter=',')
-            names = dict([(name, name or ('col%d' % i)) for i, name in enumerate(cf.fieldnames)])
-            cols = [Column(names[rowname], String(), primary_key=(rowname == 'id'))
-                    for rowname in cf.fieldnames]
-            has_primary_key = any((rowname == 'id') for rowname in cf.fieldnames)
-            if not has_primary_key:
-                cols = [Column('id', Integer(), primary_key=True)] + cols
-            table = Table('_table_', metadata, *cols)
-            table.create()
-            for idx, row in enumerate(cf):
-                row = dict((names[name], val) for name, val in row.items())
-                if not has_primary_key:
-                    row['id'] = idx + 1
-                table.insert().values(**row).execute()
+        table_name = url
+        table_name = re.sub(r'.*[/\\]', '', table_name)
+        table_name = re.sub(r'[.].*$', '', table_name)
+        table_name = table_name.lower()
+        table_name = re.sub(r'[^a-z]', '', table_name)
+        table_name = table_name or '_table_'
+        data = self.read_csv(url)
 
-            class CsvTable(object):
-                pass
-            mapper(CsvTable, table)
-            self.table = table
+        metadata = MetaData(bind=engine)
+        cols = [
+            Column(name,
+                   data.column_types[idx],
+                   primary_key=(name == 'id'))
+            for idx, name in enumerate(data.column_names)
+        ]
+        has_primary_key = any((name == 'id') for name in data.column_names)
+        if not has_primary_key:
+            cols = [Column('id', Integer(), primary_key=True)] + cols
+        table = Table(table_name, metadata, *cols)
+        table.create()
+        for idx, row in enumerate(data.rows):
+            if not has_primary_key:
+                row['id'] = idx + 1
+            table.insert().values(**row).execute()
+
+        class CsvTable(object):
+            pass
+        mapper(CsvTable, table)
+        self.table = table
         return engine
+
+    def read_csv(self, fname):
+        class Data(object):
+            pass
+        data = Data()
+        with open(fname) as f:
+            cf = csv.DictReader(f, delimiter=',')
+            data.rows = list(cf)
+            data.column_names = cf.fieldnames
+        data.column_types = [self.tweak_type(data, idx) for idx, _ in enumerate(data.column_names)]
+        return data
+
+    def tweak_type(self, data, idx):
+        name = data.column_names[idx]
+        strings = 0
+        ints = 0
+        floats = 0
+        for row in data.rows:
+            v = row[name]
+            try:
+                f = float(v)
+                if abs(round(f) - f) > 0.001:
+                    floats += 1
+                else:
+                    ints += 1
+            except:
+                strings += 1
+            if strings > 50:
+                break
+        if strings > max([floats, ints]):
+            return String()
+        for row in data.rows:
+            v = row[name]
+            try:
+                f = float(v)
+                if ints > floats and abs(round(f) - f) < 0.001:
+                    row[name] = int(f)
+                else:
+                    row[name] = decimal.Decimal(v)
+            except:
+                pass
+        return Integer() if ints > floats else Float()
 
     def save_csv(self, fname):
         if os.path.exists(fname):

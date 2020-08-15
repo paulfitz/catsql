@@ -79,6 +79,9 @@ def add_options(parser):
     parser.add_argument('--terse', default=False, action='store_true',
                         help='Hide any columns with predetermined values.')
 
+    parser.add_argument('--txt', nargs=1, required=False, default=None,
+                        help='Save results to a text file (in csv format).')
+
     parser.add_argument('--types', default=False, action='store_true',
                         help='Show column types instead of actual data.')
 

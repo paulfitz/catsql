@@ -7,14 +7,15 @@ install_requires = [
     "daff >= 1.3.14",
     "openpyxl >= 2.4.1",
     "six >= 1.7.3",
-    "SQLAlchemy >= 1.0.11"
+    "SQLAlchemy >= 1.0.11",
+    "parsedatetime === 2.5",
 ]
 
 if sys.version_info[0] == 2:
     install_requires.append('unicodecsv')
 
 setup(name="catsql",
-      version="0.4.9",
+      version="0.4.10",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display a quick view of sql databases (and make quick edits)",
@@ -31,7 +32,7 @@ setup(name="catsql",
               "psycopg2"
           ],
           "mysql": [
-              "mysql-python"
+              "mysqlclient"
           ]
       },
       tests_require=[

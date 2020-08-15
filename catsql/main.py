@@ -7,6 +7,7 @@ import argparse
 import errno
 from collections import OrderedDict
 from datetime import datetime
+import decimal
 from io import StringIO, BytesIO
 import json
 import openpyxl
@@ -31,13 +32,13 @@ else:
 
 warnings.simplefilter("ignore", category=SAWarning)
 
-
-def flatten_date(obj):
-    if isinstance(obj, datetime):
-        serial = obj.isoformat()
-        return serial
-    raise TypeError("No change needed")
-
+class CatEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return json.JSONEncoder.default(self, obj)
 
 # Get approximate length of header
 class CsvRowWriter(object):
@@ -106,6 +107,8 @@ class Viewer(object):
             self.tables = set(self.tables)
         self.row_filter = args.sql
         self.output_in_csv = args.csv
+        if args.txt:
+            self.output_in_csv = True
         self.output_in_json = args.json
         self.output_in_sqlite = args.sqlite
         self.output_in_excel = args.excel
@@ -215,6 +218,8 @@ class Viewer(object):
         output_filename = None
         self.output_file = sys.stdout
         work_file = None
+        if self.args.txt:
+            work_file = self.output_file = open(self.args.txt[0], 'wt')
         self.start_table(None, None)
 
         try:
@@ -434,13 +439,13 @@ class Viewer(object):
 
             if self.target_ss:
                 self.target_ss.save(self.output_in_excel[0])
+            if work_file:
+                try:
+                    work_file.close()
+                except Exception:
+                    pass
+                work_file = None
             if work:
-                if work_file:
-                    try:
-                        work_file.close()
-                    except Exception:
-                        pass
-                    work_file = None
                 import shutil
                 shutil.rmtree(work)
                 work = None
@@ -449,7 +454,8 @@ class Viewer(object):
         result = OrderedDict()
         result['count'] = 0
         result['meta'] = {
-            'generator': 'catsql'
+            'generator': 'catsql',
+            'name': table.name,
         }
         results = result['results'] = []
         names = []
@@ -469,7 +475,7 @@ class Viewer(object):
         with open(filename, 'w') as fout:
             fout.write(json.dumps(result,
                                   indent=2,
-                                  default=flatten_date))
+                                  cls=CatEncoder))
 
 
 def catsql(sys_args):
