@@ -138,7 +138,7 @@ class Database(object):
                 if ints > floats and abs(round(f) - f) < 0.001:
                     row[name] = int(f)
                 else:
-                    row[name] = decimal.Decimal(v)
+                    row[name] = f
             except:
                 pass
         return Integer() if ints > floats else Float()
