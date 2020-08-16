@@ -8,14 +8,14 @@ install_requires = [
     "openpyxl >= 2.4.1",
     "six >= 1.7.3",
     "SQLAlchemy >= 1.0.11",
-    "parsedatetime === 2.5",
+    "parsedatetime == 2.5",
 ]
 
 if sys.version_info[0] == 2:
     install_requires.append('unicodecsv')
 
 setup(name="catsql",
-      version="0.4.10",
+      version="0.4.11",
       author="Paul Fitzpatrick",
       author_email="paulfitz@alum.mit.edu",
       description="Display a quick view of sql databases (and make quick edits)",
