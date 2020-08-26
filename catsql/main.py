@@ -32,6 +32,7 @@ else:
 
 warnings.simplefilter("ignore", category=SAWarning)
 
+
 class CatEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, decimal.Decimal):
@@ -39,6 +40,7 @@ class CatEncoder(json.JSONEncoder):
         if isinstance(obj, datetime):
             return obj.isoformat()
         return json.JSONEncoder.default(self, obj)
+
 
 # Get approximate length of header
 class CsvRowWriter(object):

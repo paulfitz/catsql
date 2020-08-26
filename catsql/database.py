@@ -1,5 +1,4 @@
 from catsql.filter import Filter
-import decimal
 import os
 import re
 from shutil import copyfile
@@ -14,7 +13,9 @@ if sys.version_info[0] == 2:
 else:
     import csv
 
+
 class Database(object):
+
     def __init__(self, url, verbose=False, tables=None, schema=None, can_create=False):
         self.url = url
         self._full_url = self.url
@@ -125,7 +126,7 @@ class Database(object):
                     floats += 1
                 else:
                     ints += 1
-            except:
+            except Exception:
                 strings += 1
             if strings > 50:
                 break
@@ -139,7 +140,7 @@ class Database(object):
                     row[name] = int(f)
                 else:
                     row[name] = f
-            except:
+            except Exception:
                 pass
         return Integer() if ints > floats else Float()
 
