@@ -14,7 +14,7 @@ import openpyxl
 import openpyxl.styles
 import os
 from shutil import copyfile
-from sqlalchemy import Column, MetaData, Table, types
+from sqlalchemy import Column, ForeignKey, MetaData, Table, types
 from sqlalchemy.exc import (CompileError, SAWarning)
 from subprocess import call
 import sys
@@ -341,7 +341,9 @@ class Viewer(object):
                                 example = data.get(name)
                                 sql_type = fallback_type(example)
                             sql_type.collation = None  # ignore collation
+                            fks = [ForeignKey(fk.column) for fk in column.foreign_keys]
                             columns.append(Column(name, sql_type,
+                                                  *fks,
                                                   primary_key=column.primary_key))
                         metadata = MetaData(bind=self.target_db.engine)
                         target['table'] = Table(table_name, metadata, *columns)
